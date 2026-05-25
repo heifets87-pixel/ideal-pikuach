@@ -1,7 +1,7 @@
 {
   "name": "IDEAL פיקוח",
   "short_name": "פיקוח",
-  "start_url": "/ideal-pikuach.html",
+ "start_url": "/ideal-pikuach/ideal-pikuach.html",
   "display": "standalone",
   "background_color": "#e8f3fc",
   "theme_color": "#1565c0",
