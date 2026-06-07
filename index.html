@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="IDEAL פיקוח"/>
+<meta name="theme-color" content="#1565c0"/>
+<title>IDEAL פיקוח</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body,#root{background:#e8f3fc;color:#1e3a5f;font-family:'Heebo',Arial,sans-serif;direction:rtl;min-height:100vh;}
+input,select,textarea,button{font-family:'Heebo',Arial,sans-serif;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#1565c0!important;}
+::placeholder{color:#aac8e8;}
+option{background:#fff;color:#1e3a5f;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.spin{animation:pulse 1.5s infinite;}
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#e8f3fc;direction:rtl;">
+    <div style="font-size:48px;margin-bottom:16px">🏗</div>
+    <div style="font-size:18px;font-weight:700;color:#1565c0;margin-bottom:8px">IDEAL פיקוח</div>
+    <div style="font-size:14px;color:#7fafd6">טוען...</div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const e = React.createElement;
+const {useState,useRef,useEffect} = React;
+
+// ── Constants ─────────────────────────────────────────────
+const SEV = ["קריטי","גבוה","בינוני","נמוך"];
+const SEVC = {"קריטי":"#ef4444","גבוה":"#f97316","בינוני":"#eab308","נמוך":"#22c55e"};
+const AREAS = ["מסד","שלד","חיפוי","אינסטלציה","חשמל","גג","חצר","כללי"];
+const STATS = ["פתוח","בטיפול","סגור"];
+const FLOORS = ["מרתף","קרקע","1","2","3","4","5","6","7","8","9","10"];
+const ULOCS = ["סלון","מטבח","חדר שינה","חדר אמבטיה","שירותים","מרפסת","כניסה","מסדרון","חדר עבודה","מחסן","חצר פרטית"];
+const LOGO = "iVBORw0KGgoAAAANSUhEUgAAAfQAAADKCAYAAABT0bLjAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAReaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pgo8eDp4bXBtZXRhIHhtbG5zOng9J2Fkb2JlOm5zOm1ldGEvJz4KPHJkZjpSREYgeG1sbnM6cmRmPSdodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjJz4KCiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0nJwogIHhtbG5zOkF0dHJpYj0naHR0cDovL25zLmF0dHJpYnV0aW9uLmNvbS9hZHMvMS4wLyc+CiAgPEF0dHJpYjpBZHM+CiAgIDxyZGY6U2VxPgogICAgPHJkZjpsaSByZGY6cGFyc2VUeXBlPSdSZXNvdXJjZSc+CiAgICAgPEF0dHJpYjpDcmVhdGVkPjIwMjItMDEtMjQ8L0F0dHJpYjpDcmVhdGVkPgogICAgIDxBdHRyaWI6RXh0SWQ+OTU1MGM3NTMtYTExNy00OWU1LWIzOTgtMjU1YjU1MjQ4MGVjPC9BdHRyaWI6RXh0SWQ+CiAgICAgPEF0dHJpYjpGYklkPjUyNTI2NTkxNDE3OTU4MDwvQXR0cmliOkZiSWQ+CiAgICAgPEF0dHJpYjpUb3VjaFR5cGU+MjwvQXR0cmliOlRvdWNoVHlwZT4KICAgIDwvcmRmOmxpPgogICA8L3JkZjpTZXE+CiAgPC9BdHRyaWI6QWRzPgogPC9yZGY6RGVzY3JpcHRpb24+CgogPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9JycKICB4bWxuczpkYz0naHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8nPgogIDxkYzp0aXRsZT4KICAgPHJkZjpBbHQ+CiAgICA8cmRmOmxpIHhtbDpsYW5nPSd4LWRlZmF1bHQnPkQ8L3JkZjpsaT4KICAgPC9yZGY6QWx0PgogIDwvZGM6dGl0bGU+CiA8L3JkZjpEZXNjcmlwdGlvbj4KCiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0nJwogIHhtbG5zOnBkZj0naHR0cDovL25zLmFkb2JlLmNvbS9wZGYvMS4zLyc+CiAgPHBkZjpBdXRob3I+SW5iYXIgT3NvPC9wZGY6QXV0aG9yPgogPC9yZGY6RGVzY3JpcHRpb24+CgogPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9JycKICB4bWxuczp4bXA9J2h0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8nPgogIDx4bXA6Q3JlYXRvclRvb2w+Q2FudmE8L3htcDpDcmVhdG9yVG9vbD4KIDwvcmRmOkRlc2NyaXB0aW9uPgo8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo8P3hwYWNrZXQgZW5kPSdyJz8+LhbIogAAACF0RVh0Q3JlYXRpb24gVGltZQAyMDIyOjAxOjI0IDIxOjIzOjQ4iD5yqQAARIVJREFUeF7tnQdcVeUbxx/ZG0REEdwMt6goztwbR39tWZqlZZotzaYjrdSGlZVl2tRcpZkrrRy5wT1QFBwoIojIHrL0f56X98q693LHOfeec+/zrffDec5FuMC593ee531GjfsCQBAEQRCEorHhHwmCIAiCUDAk6ARBEARhAZCgEwRBEIQFQIJOEARBEBYACTpBEARBWAAk6ARBEARhAZCgEwRBEIQFQIJOEARBEBYACTpBEARBWAAk6ARBEARhAZCgEwRBEIQFQIJOEARBEBYACTpBEARBWAAk6ARBEARhAZCgEwRBEIQFQIJOEARBEBZAjfsC/Jgg1IKXSGFhIRQXF0N6XiFk5RdAcUmJ8Mg9sLWxBXtbYdnZQC0XJ7C3txOWPdjZ2ZX+Y4IgCMIkkKATDygqKoJ79+6xjzczcuFWZg77WFhcAievpUCrgNrgbG8LeYXFkJyVB9dSswThtoUi4XEfNydwd3YAN0cHqCUcOwnnvV2doFNTP3B0dCSBJwiCkBgSdCunRPC08/Pz4cS123ApOY2JckZeASRm5MCp66mCV34PBrdtCA62dnDochJE30iFEuGKCartCZ0D6woCbwfF9+5D5t0icLQB8BJEHGrUAG8XR3BzchCE3QZsbG3AUVhtG/mBg4MD/84EQRCEmJCgWyl3796FqEs3IT41E3bH3ICgul7gJYj5/rgkOHQpCbLvFsLMiI5QWHIPdp67Dieu34agOl7Qr7k/BNTyhKjLyXDyegokpOXwr6iehjVdYUznZjCodSNwtLeBYuFuoGldb3B2duafQRAEQYgBCbqVgd74/osJsO3MVdh38Sb0DvFnQr09+hocFkS6SBDwwW0aQVhDX/hbEPIjV5LBUxD64aGNoY6nK2w4dgmupmbxr6Yffl6uMG94OLQMqAVujvbg6+UOTk6CR08QBEEYDQm6lYAe+d6Ya7BeEOSd5xOYiD8eHgzbz8bDv+cS+GcBTB/YHlKz82B1VCwT99D6PjA6LBDWHY2Dszfu8M8yDmcHO5g3ogsMbl0f3J0cwNXVlfbYCYIgjIQE3Qo4HBMP205fgTWCKN/JuQuv9Q8F/KuvjLzAbBVvDQmDXeevw9H4FGaPbNcYaru7wPJ955gtNijs6yYNghb+taCmhzvY2tryRwiCIAh9IUG3YAoKCuC3yBj4+VAMHBdEGrPO3x4aBuuPXoKoq8n8s0qZPSIc1kZehNhbGcye1KsVJNzJhr/OXmO2lPh7ucLk3q1hRPsgqO/rzc8SBEEQ+kCCbqFcvpkCvwpC/v3+8yzBrWugH4wIbQLztx2FzPxC/lmlvD6wPayKughJGbnMHhMezJLd9sfdZLap6BXiD9MHtYceLZrwMwRBEISukKBbIIcuxMP7myPh8OVbzH60YxB4OjvC8n3RzC7PjMEd4O+z8XCG74+/1LcNxCSls312c4B7+28O6gAPhzenEDxBEIQekKBbGFuPXYCFfx2F6MQ0ZvcO9gd/H3fBW7/A7PLMiugIf5668iDZbVSHppCWWwh7LphHzFW4OtrD/Ic7w1MPtSVRJwiC0BHq5W5B/H7oHMzaePiBmI/t2gyK799TK+ZT+rSGg5eSHoh590A/qOXqZHYxR3ILiuCVtfvhp/9OscY3BEEQRPWQoFsIX++IgjmbDj+oEX+2R0uIv53FGsVUpl/z+lBQVAK7L9xgdv1a7tA9yB+WSZTNbiiv/3YAftl7mlsEQRCENkjQLYD1h6JhzZFY1ncdebprC7iUnK4xqW1Ay/qwopzX/lq/UPhy1yluyYs31x+ErcdiuEUQBEFoggRd4Ww/fhFWHI6BczzMPrpDICSkZ8E+DWI+f1QX4fMvsqYxyMh2TWFH9DU2cEWO4PN8efVe+OtE1W0DgiAIogwSdAWTfCcD/hbEeF9sqXh3D6oH7k52rDe7Oh4JC4ZT129DdGLpvnmjWm7QoVFt+OfcdWbLlbTcAvjs75MQe6Ni7TxBEARRBgm6QsERp9tOXWZNYxBfd2fo36I+/HRQsyfbNbAObD9bJt6PhYfAlzvPcEveHItPgUU7TrC57ARBEERVSNAVCM4s33w8Fj4RBE7FqwNCYZHgxWpixqD2rB87NplBOjWuA/mFJXA7O4/ZSgCf/79nr3CLIAiCKA8JugLBUPv2M1chOatUjLHT208HzkMWF+vKeDg7QC03Z4i8XBayHh0WBF/vlmcinDbm/hkJZ+NN28GOIAhCCZCgKwz0znfHXIdtZ0p7rEe0bcxmmsfdymS2Ol7p2xbWHYnlFsBDwfUgLjlN+Fr8hIKITcmEdVGxFHonCIKoBHWKUxj7zl6Fj/8+CgfiksDdyR7ejegIb60/xB+tSiMfd3giPAQWbDvGzwB8NaYnvLR6j3CkzPs5bxdHWDquDwxoF8zPEARRmZyCIgh4+RtuicObEeHw9rDO3CLkBgm6gsBEuB/2nIS3NhxmNor5mqiLcOV2aTMZdcwdHg6bT1+B49duM7tTozrQOsAHfjggryYy+oIz2r95uj84ODjwM9KQlpYG8+bN41b11KhRAxwdHcHJyQl8fX2hS5cu0K5dO/5oVS5cuABLly7lVkWmT58O9evX51YpH3/8Mdy8WXXLITAwEKZOncqOr127Bp9//jk71kZoaCiMHz+eW2V88MEHkJqayi3DmDlzJvj4+HCrFH1/1q1bt8LOnTu5VQb+fj/66CNulVJcXAyvv/46tyoyZswY6NSpE7dKweeBz0cd+De0t7cHd3d3aNy4MfTq1QsCAgL4o1V57733ICOjdEphdeDcf1dXV/b1OnTowK4N/H5SQIJufZCgK4h/T8XC7D8j2fCU4aGN4W5RidaSM09ne3ixbyjM33qUnwGY/78u8Nk/JyG13Bx0JVLT1RG+G9tb8NJD+BlpiI+PZ2/qxjBq1ChYu3YtezOvzN9//w2DBg3iVkWOHj0KYWFh3CrloYcegv3793OrjPbt28Px48fZ8apVq+Cpp55ix9p48cUX4euvv+ZWKThy183NjQmkMcTFxbGbjPLo+7O+/fbbsHDhQm6VgYKYk5PDrVLu3r0Lzs7O3KrITz/9VOXGpWHDhnD9um7lmjY2NvDhhx/CW2+9xc9UBMU5MTGRW/rRqlUr2LRpEzRpIv6EQRJ064P20BUCvsFevp3JxBzpGeKvsd5cxaSHWsH+i2VvNCF1vVhNt9LFHEkXfo5/zyUoYi99w4YNTFTUoa93VtnrVZGeXnpdINHRVafqqaNBgwb8qAz8t8aKuSb0/Vml8lzv3Lmjs5gjmLeCNxfbt2/nZ8QDf99jx47lFkEYBwm6QohOSIatp6+y4+cFof7t6CUoriarrbaHCxy/lsItgD7N6sMBE884l5K9sYlw6qoyfp6DBw/yo4roK1q1a9fmRxURS9BPnZKu8kEugn7iRFm5pz5884243q6KQ4cOwZUr4pdjOtvbwZZpo7QuwrIgQVcA6CFcEjzzUwmp4OflCj7uThB1RXvXtGe6Nmcd5FQtXb1cHCFI8NAjq/l3SiL2VgZE37ijiIlsmvZY9RUtTR56ZmYmu04QXQUdw86VIUHXzLlz0uWdnD17lh+Jh61NDegREqB1EZYFCboCSMvOhV0XEiDnbhE8GR4CG09Ufzcf5OcF52+W9ndH2vrXgjPXy7x1S+GPk1fYvq856N69Ozz22GMVlqbkKU03HfqKliYPHVNhVKLeu3dvePrpp9nSlpCnzkNv1KjRg39b3RowYAD/V7ohF0H38PCo8ncrv9q0acM/syK5uaXDj3QF8x3K/76eeOIJ/khVykdYCMJQSNAVQFzSHTZ8pXk9b8i6WwAxSWVCrY7GPh6QllPA9txV9GoeAHtjq45SVTqXUjJg30XzzHDHzGxMdiu/wsPD+aMVkVrQERQFTOD68ccf4eeff2YLM7TVgVncfn5+3CoDfybVv61uzZgxg/8r3ZCLoE+ePLnK36380iS8+uYW4Pcp//tasWIFf6QqUuUtENYFCbrMQY8rPjWLNY6JaN2I1Z9Xx8Ptm8Kx+FvcAvD1cIF7ggenmpVuSSRn5sEl4Xcj97C7WIKuKeSOqAvrJyWpv178/f2Z+OuKGFEQuQi6oai2NJRCYXEJLNwapXURlgUJuszJyMqBQ3E3oba7E9jZ2lQIo2vC18P5QTY80lLw7G9mKKdnu77sjLlutrC7roh1w1Gdh14ZdTXriLpwuzp2794N/fr1g44dO1p9dz59K3yxfBBL3ZYtW8bPmJbCknuwcEuk1kVYFiToMudGWjZcETzrke2a6DTmNLSBL1xNyYRbvM87Et64DuyP1V7ipmSu38mGE+Wy+eWIKTx0dYKuyUPXJugoXJs3b4bOnTtD3759YdeuXSxpy9h9XqV76PqCjXGwAc7q1av5GYKQFhJ0mXP1dgYkZeaBv5dbhRI0TQxoUZ/1O1fh4WQPbk4OEKul17vSuX4nB1Kz9EtYMjWawrX6ipa+Hrq+gn7y5EmWFDZixAiIiqoYkjVWYC1V0LErIEHIARJ0GYOJMgUl96BrUz/YGaNb4peXqwNLFFPRuLanxilslgLW4x+PT5H1Prq+HnpQUBDUq1ePW2VgNzTslKaOyoKO3dQqd1RToUnQsducrmVv+qLvz6rp83v27MmP5EHLli35kbywFX5/3YL8tS7CsiBBlzEoAkeuJENQHU84m3iHn9VMTRd7yMorgIS0sjfxFn414QTv427JxAk3MXLe49VV0NHbw97gGOJWJ3KILt3iEE3754iue+jlMdZj1vdnrfz5+Dlr1qyBbdu28TPyANvCYn95ueHsYAfbXh+tdRGWBQm6jElKywRbGxvWrhWzuatjRGhTiE2umOmMe+onLLD+vDJ4E5OeJ9+WtpoEvVmzZjBhwgTmeWOfc/SO58yZo1UgdOkWh2gKtyOGCHplbt0qq6SojLrnr+/PGhERAQMHDmQ98F9++WWIiYmBxx9/nD8qH7Af+5kzZ+D9999nPePxOZava+/Tpw//TIKQFhJ0GXM7Ow9qublU2xVORUMfT4gv5517u5ZmxqdZQO/26sAkwHM3jJsQJiWaBB3F+fvvv4eUlBTWK7xp06b8Ec3o6qFrGxgihof+559/8qOKYI07TpqrjL4/KzbF2bFjB/u5Fi9ezBrCyJXg4GA2YQ579mMUoXxd++zZs/lnEYS0kKDLFFZ/ficHXBxs4JwO4XbEXhDv63fKas3rerpAYrr6PVRLIyOvEO4WFnHLNMTGxkJkZGSFheNW1aFJ0FXghDNd0eShJyQksNatqqVpmIiXlxcbDWoomAU/a9YsWL9+PT9TERwZqy3CoM/Piuj7+aYmKyurynWgbqmbkqfC2O0MdZTcuw8HYhO1LsKyIEGXMW6OdoKXng/ZBdULla+7C0sOKz9JrWltT0hIy+aWZYM/+62s/GqFU0zefPNNJl7l1549e/ijFRHzeWkS9MOHDzOvVrV+/fVX/khFDB3ViaKDY0pxvjjOTNfEq6++yo+sA/TCK18H6pa20LumREdjyC8qhohF67UuwrIgQZcp6KHb2tjCmRu6eee9mvmzQSXlCfT1govJVUuZLJW4W+oHoMgBMbuMaatF14VOnTrxI/3BPW0UME1MnDgRHn74YW5ZBzgtzViwcx9BGAsJukxBAbiRng3X7ujmYaM3fjOjYnjdv5YrnL9pPYKOHolce2K/8MIL/Mh4NHnoujJu3Dh+pB/ooffo0YNbVcGf8bvvvuOWfMCkOjHQ9HWMFXTc/ggLC+MWQRgOCbpMwRKsGvfvC4KuW/91Z3tbSMnO5xaWsDkKf9wa1c5MtyTS8wpE9YTFAvebX3rpJW4ZjzEeOj4PDP8aCiZ+Yd14eXC/fMmSJfDtt9/q1R9eajw9PeHrr79mWwTGgjcy+/bt41YZqampEBcXxy3DwPawmPlPEMZCgi5T8gpK4GRCKkts0QX8vKTMsm5p3m5OkFpO4K2B9Gz5ZfNPmjQJ5s2bxy1x0NdDd3BwYL3YMQP7yy+/5Gf1Bz10rB0v74WjuOPe/ZQpU/gZ84A3EuUT/R599FFW5vbiiy/qfZOBSYMqvL29WWb+3r17oUWLFvxsGYZ457a2tizEPnjwYDaF7Z133uGPiIuboz1kfPeKUYuazygLwQnUc+IAYRIuJ96GN9fvh53nq+8Q5+vuDJN7t4a5m4/wMwDhTepCeOO68OWuU/yM5dOpcR3Y+NIwUROM8OVhzOAXKdqC6vOcUIS1ZZxXBsXrueee41ZFMIO/Zs2a7PiZZ55h2xvolcslCx2fH96wYA96rHM3hgMHDsCWLVvYiFhtERFMdiwq0r26AsP2Ym0BmIKhn66Hg3Fl2fBvRoTD28M6c4uQG+Shy5TLKelwR8f68XYNfKtks9f1cBY8dusoWVNxt0j8DHeVV2rokgJ9npM+Yl4d+H1VoJe+cuVKWZWUoTeNneeMFXOke/fubLBKddsb6G2r+71rWkoSc0J5kKDLlOyCQkjN0S1kHlzXC+JTKwq6h7MjJJZrMmMNlNy7B7fKbTsQ0oFhfIIg5AWF3GXK6v2nYfpvByC/sPqs7beGhsF/FxIh8nJZq8+3BofB5lNX4XySbmVvlkBwHS9Y8lRv6BhsfFtTa0VTyL13797w119/MS+TUAb43vHIV5u4ZRhnE25DZn7Z9g6F3OUNeegyBPflkjNydRJzxMnODjIq9TF3d7aHm5nW0VRGxT3cWy42XWMZSwfDw9iXHCew7d69m8RcYZQIr4cDsTeMWuXFnJA/JOgyBPcqi3TMbkdsagBk5lV84WHZWlaeZY9NrUw9LxfwcSfRMQYcoILZ4tjt7fLly6wvefv27fmjBEHIGRJ0GYLZw7k6tHtV4WRvC/nlEsKwpzveDlhPBTpAbXdniGjbBL7Zfdak7V8tDUwGw+Epn3/+uSgT2QiCMB0k6DLkQlIq5OkxaKS45B7k3C3zxh0EQb+Ta/kT1lQ09fWEBaO6whu/H4RVhy/A36cu8UcIQ6DQunoyMzPhxo0b3JI/zvZ2sGXaKK2LsCwoKU5mxCWmwNZTl1mHuJ8PXuBnNePu6ABvD+kA72w8zM9ghrsDzBrWCWb8doCfsUy8hJ/zoRB/GNy6IUxe+R8/W+qtr540GDoG1ednCKIqGMnBTm841x2jEtV9xNp/LNNLTk6WZJiKOfCatJgf6QYlxckbRQk6tvXElqhKwJAGEmeu3oT5W49Ak9qecPzaLYi6cos/opmAmq4woUfLCk1lcP/8pX6hMG9zFD9jWQTUdIM+zfyha2A9OHX9NizdG80fKcPRzhZ+fX4g9GsTWKF+Wh04QYzQjCHXsrk5evQoE2J14qw6vnPnjkGtgn/55ReD++HLDRJ0y0JRgo5tErFDlRKYNm0aLFq0iFvVc+5aEgsXf7PnDCx6rDvM/jMScguqz3IPqVMTBrZqAF/uOs3PlAr6m4PD4K0NB/kZ5YM/U1AdL3go2B8ChY/YvWrl4Yv8UfV4uzrB+qnDoH2TevxMVfLz88HFxYVbhDqwW9rHH3/MLfmDbVp79erFLfHp27cv7Ny5k1vKhgTdslDUHnpWlm6DSuRAXl4eP9IOJh+t2LYbpq7awzLVuwXWhcspmTqJOeLqaAdO9hW9JyzfwrI1pdOwljsMbNkQZg/rCB+N7gZjwoPh+LUUeGHF7mrFHHF1tIc6HtrFmrzz6snOVlb54zfffMOPpAFn3ickVN+S2dwUFpfAwq1RWhdhWShK0DEpRSnoIuiYze4QFAbv/nMRTl67DYkZeTC2a3O4fDsLbKoJE6uo5eYEjWt7gLtTaecu3D+f1LMVRMXfYp4seqlyB39WP09XaNegNowIbQxvDekAP4zvA3OGh0NYo9qw6dRVeF4Q8VfX7oc9F3RPSnq5Xyj4+5QN2lAHCXr1KEnQMZy+ceNGbkkDhumx7a3cKSy5Bwu3RGpdhGWhqJA7hv4+/fRTbsmbUaNGwfr167lVldSMbFj8zzH4atcZfqYUDJ83re0leN02TNgvJqezpemv9LHgue6NTYRtZ+KhQ0NfeLRTEMQKn+/n6QKuDg7Mg7eztYFrqVlwPS0H4tOyIF/w/nPYKhRWEeTc1T2j3lCwtM7LxRE8nXE5sFVXEHEfN0doIvy8GFUoEt6ArgvP70T8bThwqazrnSHMjOgIrw7uVO3e75UrV6Bp06bcItQxfPhw2LTJuI5jpuKDDz5g42qlJiQkBC5cqD5p1ZzgazvgZXGjFRRylzeKEvTnn38eli9fzi15g6MRsVWmOi4kpsB7Gw/BjrPX+JmK9GrmD3Y1bCA5Kw8a+XhAs7pegkhnwMVbwhLEujxLx/WGdzYcgog2jcFTEMyvyu2llyescR1o4VcTArzdBa/dARxsbQWhtwXbGgC2NjaQlnOXzVPPulvAOtQVFt9jw04KikuP8WN+UbHw+TYsyQwXNrRB7xqP8SLCmeyuDvbgJtxEYLjbzckB3IWPni4OUFxyH+4Ln1/IvuY94XsUwbW0bLgk/EynElJLn6QIBPl6wjuCmI/s1KLaZDjk/Pnz0LJlS24R6sC2r9gpTu5g1nrjxo1NFg6PjIyE8PBwbskPEnTrQ1GCjm0o161bxy1507NnT/jvv7JSKhW7zl6GORsPQ3Si9h7rIXVrQt/mASyLGwUPM7ub+XlDcB1PuJiUARdupQuerQd0D/IHJ8ED33z6KuyPu8n/tf7gjQNmzPu6C569IMjODnbgYi8sQZAxYxxrWgVJZjcC94SPOH8dF3rWGIIsEt5MUagz84sgLTcf0nML4XZOnnCTcBduZeUIb7b8G0kEPv8RoU1gbLcW0KRuLZ1nYJ84cQI6dOjALUIdYWFhLGtc7mAUYeTIkdySnsmTJ0u+X28MeGM++ss/uaWe8qNRdYEEXd4oStDR692xYwe35E3Hjh3hyJGyUjJk87EL8Ma6/czz1pWwhr7QsUkdiBM82Su3s4SVKQh7TcFrrwmPdwoWxDIfXlmzl3+2dYHJgK39vWFQ60YwpG1jCBSE3N5ev2TAgwcPsu5ohGaUEF5GBg4cCP/88w+3pAdnwyclJYk6otbUUJa7ZUFZ7hKRm1s2xhPvmdZHRsO01Xv1EnPk2LUU+HbPWUhIy2FJY5N6tYYGgrd+9sYdeH7FLqsTc0z6ay/8Hl7pGwobp0bAuinD2F558/p19RZzhJLiqkcJSXGXLl2Cf//9l1umIT09HbZs2cItgjA/lOUuEeWz3JPSMmFtVCykGtGOFffONxy/BCsOxcCt7HxoG+AjeOgh8FinIOgW6MfC5Q52tvyzLQfcf2/u5w0Rggf+Wp8W8MGAZvBwzUx4ql096NKsIXh7uoGtreE/Nwl69ShB0JcuXcpunE3NihUr+BFBmB9FhdxxWIQS6j8RX19fVkKDZOXmw0dbImHJnooZ7WJQ39tNWO6s3SnuI2fnF0JKVh7cyS2AW/gxJx8yhXNyx9amBvi4ObMyuzoezhDk4waNvF3BrqQAcm8lwoVjB+HYsWNw8uRJ9vkeHh5sz9TYBiJYifDII49wi1AHJhdiwpkuSYbmAG/K/P39IS0tjZ8xHVhFkZiYyF7vcgNzXA5f0p5XE7FIcyWOOijkLm8UJeienp6KCbtjr+ecnBxuAZy+lgy/R8bAqsiLkF5p1KmYlAqiC1vero7gIwh9UXEJ2AiCiWKfIaxUQeTzC0vYRDfMhM0tKGQJbVKBYo373W6Y+S4szIDHpLu6gnD7Cs/Px8UeajrZgkNRPmQlXYO4c2fg2rVrEB0dDVevXuVfpSq4d4mCHBERwc/oz6+//gpjx47lFqEJ9NKxj7kcwVas48eP55bpweZQOG5WblCWu/WhKEHHN3Cl9HLHLOvKYzwzcvLgz2MXYePJyxB5KVkQUdOM+bQTngvWfbM6cGGhoKLtKoiqq6MD2NvZQE3BxkYUmK2eWyDcANS4D8XYO18Q+rzCYlaeho/hXX9eUQk42tqwED+OasUac3zcw8kBXBztSkvihK/pzb+Xu5M92AnOXZLgyeQKwpCbnQG3kxIh9WYC3Ey4zsQbIy+GhHadnZ3h77//hh49evAz+vH999/Dc889xy1CEzdv3gQ/Pz9uyQssHaucgGpKQkNDH0SO5AQJuvWhKEFHj+21115TTB9l7BNeeRQlinxs0h3YF5MAey8msFammKkuB1h5miDy+BGFGhc2pUEP21YQbPTybUBQ5tL/QdB2Vsp2j5ew4Q0ANofBhW0nce97aIt6cD36KPywaAEbiCEFXl5eEBUVBcHBwfyM7mCuw4IFC1jDItpP18zFixcN+v1KjVzKDs+cOQOtW7fmljwgQbc+FCXoKnDv9PXXX2eZrXIEs627dOkC27dv1zj4A2u3LyTehgOxN+BKSiZEXUmG2FsZLAyuZPBmALPQR7aqB9F7tsLaX35kIyqlpk2bNkzUDZ3lHR8fz66pDRs28DNEeTB/QY71+hMnToQffviBW+Zj+vTpsutiSYJufShS0BEMvS9evJi1epTDvnqTJk1YHSyuPn36gLu7O39EO/jrx57uZ66nwKkriRCdlA7RN9PZgJY0I7LiTQ32lO/SpA50DvCC6N1bYMXyb1mEwpS88MIL8O2333LLMHDwxiuvvAJnz57lZwgE6/W7du3KLXmQkZHBkuF0HYQkJXXr1oUbN24YVXEhR4Z+ur5C8xkSdHmjWEFXgWHcd999F3766acqe9ZSgglCmGGNAj5o0CAIDAzkjxgO/imwfn3HoWOQmHsP4rOL4HpaLmsmczVVnsmAwXW8oFsTX/C3K4ATO/6ANavMN7QCs7APHDhgtPDgdfTdd9/BnDlzTBJdQDCqg8+7oKCALbxhVXeMy5AZ3saCXQ+x+6GcwBt6OSWjbdu2DYYMGcIty4AEXVkoXtBVXL58mYVM//xTe6tDMcB9/IULF4KDQ+mEMylITk6GP/74A65nF4NfUEsotLGH6xn5EJOUBvF3siE123z77jjZrWU9bxgR2gh8bYvg4F9/wFdffcUiDeamVatWcOrUKVE8Jby5QtF4//33Jd9fr1Wrls43D3jDUV7gKwu+ysYZ5rjtIwaYt4JzwOVE8+bNZdXB7rHHHoO1a9dyyzIgQVcWFiPoKrC/MjaZkJJPPvmE3TyYAtwX7t+/P6tz7dazN7Tp1A2c6zaAbLCH6MR0iLuVDgnpuSbZe0dvvEdwPXgoOAC6BPlDbS935hUj2DUL38y++OILiI2NZefMBZYxjRs3jlvGg4NJ8G8gpWesj6DrCjZi6tSpkyh/D7wxwEiUXNi1axf069ePW/IA8zewFSwmaVoKJOjKwuIEHZu54H6WlJhS0BEM/c6bN49bpeF+zKjt2ncQ+IW0AmdvX0jKKWbd5DA0n5yZB9l3xSnvq+vpwlrODmjZUBDxeqxfuraRpHg5YWQBk4SwHM0cBAUFQUxMjKj7mThxTN2wHbGQQtAR9GCxrMvYPBNscWpMvb/YjB49WpYJjLhVg1Mh5QAOZ3nkK+PG3p5NuA2Z+WV9M0jQ5Y3FCTpSv359lqAiFaYWdAx3ooeoCbyBads+DNp37wV1mrYAG1d3yCy4D5dSMiApIxfS8gpYiF6XhjbocPt5ukIDb3cY0a4JhDb0hbAm9ZiI69MpDBOV3nvvPZb5a45L7Pfff2dv+mIxbdo01kBEKqQSdATFeMSIEUb9HTZu3GjSSWbawJr4hg0bymKLpzKYB4EJhHKAstytD4sUdAwzSjnu0dSCjjXAzZo141b1+Pj4QFDzltAmvBv4B7UEDx9fqGHvCMXCXzqn8B5kCy90bAeLbWGxOYyzsLDhjH9NN2hT3wd83F0ET9wbXJ0cjfZyscQQw9+mrkTAcKyYwzpwP/rNN9/klvhIKegI5gHMnj2bW/rz22+/yaZF7ty5c9nNojFgQyKpqjDi4uJESZI1FhJ060NRw1l0Ra4tKg0FW97qAwrD4f174btP58PsSU/Cq6P6w6ynIuCbac/Av4tnwsV1X8LdfWvBJ+Yf8IzeAfej/oAZ/VrBK4M6Qv+2QdC+aQB4uLqIErJGzxBLwUy9r4h7rJgoKRZKv6ZmzpwJ//vf/7ilP3LxhvF5LF++nFuGgR0nsTJGKmhgC2EuLFLQDRmjKWfEyKZHDxkFDsu6MAS7cuVKWLZsGdvz+/nnn1lmNP7epBjA0b59ezanGvvbmwoMPGGfd7FQ+jWFf1dMFsQqAEMoKpJHwyOM+OAwFGMYPHgwPP3005Jc6wgKuhwCn872drBl2iiti7AsLFLQpXqhmgvsC690OnbsyG4eTAkm54mFJVxTGGXAss6aNWvyM7ojFw/d2MZByOOPPw4BAQEQFhbGz4gLJoPu3buXW+YDWzb3CAnQugjLwiIFnZAnTz75JEyYMIFb0oN5FFhGRJTRtGlTVl6o73aKHDx0LL/DEkJjwCjRsGHD2LExWxDVgdEQgjA1JOiEScHkMm9vb25JC4Y95eApyY0BAwawxkj6IAcP/ZtvvjE6lI1irpqvIKWg43aPHFrSEtYFCTphUlDMy9fUSw0JunqwSmPMmDHcqh5zCzpmpIvh9WK4XQVOj2vRogW3xCUnJ0fULR9DwImHC7dGaV2EZWGRZWvY0QpnZEuFqcvWcAiFIfue+nD16lVo1KgRt6QF25JiHTE2AZIabMCDoy2NReq56VKXrakDRbJ79+6sLBKvL20LG+u0bNmS/0vTgxPVcLKaMWC1CF5zmOWuArP/P/zwQ26Ji9ilk/pCZWvWB3nohMnBN9QpU6ZwS1qwUxpm8BNVwVrs48ePM28yISGB3fhgRAMT53DY0WeffQazZs2CqVOnmlXMETGS4R5++OEKYo5IGXbH/X4pG1wRRGVI0Amz8Pzzz5skex+TueQ0wIPQnyNHjrAbD2MpH25XgSWVGC2SAuz9/+uvv3KLIKSHBJ0wC9iuFsO9piA6OpofEUoEk+GMBbsnapoWh567VJgz2922Rg3oFuSvdRGWBQk6YTZM1UoU8wMIZZKWlgbr1q3jluFgX39NQ4WkFHSMDmGEwRw4O9jBttdHa12EZUGCTpgNU42/NNfUN8J4cC9fjFn06sLtKjBShOOJpYJq0glTQYJOmA0cOIOhUKkhQVcmWIAjRnfBevXqQY8ePbhVFczlGD58OLfEBxv5UGImYQpI0AmzguMmpSYlJYUfEUoCS75wcpmxPProo9UmYEqZ7Y7bBlu3buWW6Si5dx8OxCZqXYRlQYJOmBWsE5cafEO1FtCrxZ8Xa8v379/PmpssXbqUNfN56aWX4LHHHmM15TikBWfGyxkxkuEQbeF2FZgw5+HhwS3xMUfYPb+oGCIWrde6CMuCBJ0wK/rMeTeU9PR0fqRMVJPyDh8+zKaNYZOb+fPnw6uvvsr64/fv3x/atm3LQss4mQ+b1ODv9aGHHoJRo0bB5MmTYc6cOfD111+zueb//fcfnDt3DnJzc/l3kB9Yvy2GV9u4cWMIDw/nlmbw9zZ06FBuic/27dvh9u3b3CIIaSBBJ8xKSEgIP5KO7OxsVhMsZ7DvN3YfxLGeON6zQ4cO0KBBA3BycmIdzgIDA9n2xMiRI1nHOpznvXjxYli9ejXs3LmTNYXBQTRymYpmLLh3XlJSwi3DwYiErkiZ7Y79ENasWcMtgpAGEnTCrNSvX58fSQu2m5Uz2IZ10aJFbJb2jh074MSJE6x7m9yftxSg+GEUQgx0CberGDJkCLuBkgrKdickB3u5WxoDBw7E/vSSrU8++YR/J9OQnp6u9nmIua5evcq/m2kRPMr7NWrUUPucxFyZmZn8OxrG8uXL1X5dJa+ffvqJ/3TyYt26dWqfr76rWbNm/CvqzrBhw9R+LbHW2bNn+XdSBkM++f2+5/NfPFjzNx/mjxByhDx0wqzgXG5TjFOlsiHlYMpkuMpIme2OkJdOSAkJOmF2MImLIJCYmBjRRt4aIug4L11TRzkxWLVqlSi5AQShDhJ0wuxIuW+povKULUKeiOWdh4aGGpRwiTeXWB0gFZi4aM6RqoRlQ4JOmB1TiK0pbhoI48AyupUrV3LLOAzxzlVIme2OmCrsnl+IdegbjFrRN0w7o58wDhJ0wuxILejYJcze3p5bhFzBcHRmZia3jEOfcrXKoKDXqFGDW+KD8+bF+jm1UXIfO8XdMGpl5ltflYWSIUEnLB7yzpXBt99+y4+Mo3PnztCoUSNu6Y+/vz907NiRW+KDw2bk3qWPUCYk6ITZwbpjKTFFFj1hHNgF79SpU9wyjjt37sDYsWNZh7wZM2bA3LlzWY0/NqvBKAB229u1axdERUWxjnk4vAf/Tfmaf8p2J5RIDaxd48cWw6BBg+Dvv//mlvh88sknrKuXqcjIyICaNWtySxpwZrgxXo0xtG/fHk6ePMkt8QkLC4OjR49yyzCw0Ql2aLMkcDTp+PHjuWVeUIB//fVXbpkP3Jpxc3Nj2zQo8lJy6dIlaNq0KbfEp7C4BBZt137df7Q1ih/pxpsR4fD2sM7cIuQGeeiE2cEuaVJSp04dfkTIkdTUVNmEoDFahL3/pRZzBLsCSomDnS0TX22LsCxI0AmzI3WCUN26dfkRIUd+/PFHq2xxixn9FhggJcwICTphdnCamJQEBATwI0Ju4NAc3Nu2RnCbC0fcEoRYkKATZgVDnFKP8WzevDk/IuQG5rpcuXKFW9aHlMlxuIe+cGuU1kVYFiTohFlJTk7mR9LRokULfiRfsLQOa6e7desGDRs2ZPO5rQGxOsMpFcwdwNG5UlBYcg8WbonUugjLggSdMCvYClNKcPhLcHAwt+SLq6srrF27Fg4cOADx8fGsVhlvdo4dO8YakSxZsgTefvttlg3ep08f9jPhv1EyWC72119/ccs6wVn9Gzdu5BZBGAcJOmFWpPbQg4KCFNnHHTuVYXZ+hw4dYMSIETBlyhSYP38+y4zGGuqLFy9CTk4Oy8g+e/YsbN++nZXWvffeezBx4kRWutm6dWvJyx2NAffOcQ/d2pE6252wHkjQCbOCXpqUYAjbkvHy8oJWrVoxAZ8wYQLMmTMHli9fzgT+zJkzkJaWxnIUYmNjYffu3Uw8FixYAC+++CI0adKEfxXTg+Nsf/jhB25ZNzt37oTExERuiYetcFPYLchf6yIsCxJ0wqxgeFlKevTowY+sFxcXFxap6N27NwvZv/XWW/D1119LOlWsOjZs2AApKSncsm4wSiFFUx1nBzvY9vporYuwLEjQCbMitaCbU7QIzVh7MlxlqBUsIQYk6IRZuXz5Mj8SnwYNGkDjxo25RciF6OholvxHlBETE8MSIAnCGEjQCbOBXbJwb1cqpJ5rTRgGeefqIS+dMBYSdMJsYEKclH3cR4+mPUK5gWVachjCIkfWrFnDkgXFIqegCLwmLda6CMuCpq0ZAE1bE4cdO3bA4MGDuSUufn5+LHMYy7/EQOppa7Vq1WJDSsxJcXEx2NnZcUsa0DvHDHuxaNmyJTg7O7N+A/jccelyrO0xTcerV6+GI0eO8O8sDX/88YdokSUU9ICXxY2G0LQ1eUOCbgAk6OKwcOFC1ixFCqZNm8ZmYIuFpQv6+fPnWYkfRkzwWtO2sKMd3jAZQps2bVjdvBjg0J0bN24w0TUFOG722Wef5ZY0jBw5UrRGMyTo1geF3AmzcerUKX4kLjjLGhuxELqB3fowUoI3jjj1DJv9YJLWoUOHYNu2bSxE/tVXX8G8efPgtddeg+vXr/N/qR84iEQsMUfwxsJUYo4MHz5c8u+Hv29zR2oIBYMeuqUxcOBAjDpItgQPnX8n05Cenq72eYi5BA+dfzfTERgYqPa5GLsiIiL4dxCP5cuXq/1eYi3BQ+ffybRkZ2ffb9eundrnpGkJ3jz/1/rxxBNPqP16hq7IyEj+lU1Hr1691D4XMdeXX37Jv5v5GfLJ7/c9n//iwZq/+TB/hJAj5KETZuHWrVtw6dIlbonLSy+9xI8IbeCe+aOPPgonT57kZ3TDw8ODH+kONpHBZjJigeWI4eHh3DIdpqickGu2u4ezAwwNbcotQo6QoBNmYd++ffxIXLp27QoDBgzgFqEN3JbAFrH64unpyY90B3MQxMzgFrx9fmRaTCHox48fZzkNcgLFfOv00dCmfm1+hpAjJOiEWZBqytZHH33EjwhtfPjhh6znu75gfoK+U96wtemyZcu4JQ5jxozhR6alfv36bGCO1MjJSycxVw6U5W4AlOVuHJgYhSNAxU7+waSlTZs2cUtcLCnLfdWqVaynuyEvffTO8XrUhy1btrC/jVjgFDkcPGMu8GZo5syZ3JKGevXqseRDY5Lw8guL4ZGvjHs9XEvNhFVThlUR89TsfHjxl38h5654URc58d2zAyHA251byoEE3QBwjKVU5VbqULqgFxUVwYkTJ1h4F2d7nz59mj8iHliLjF8Xh5BIgaUI+n///QcDBw40OPyNHqq+We5DhgwxKLSvCVO//iqD4XCsf5ca7NOAfytDMbZsTZNnjmI++NPfIS45nZ+xPI7MHQfBdeU7elgTFHI3gMzMTH5kOWAIHMuKMFEN52wbwt27d1lvdpzXjbOuMTkNh6OgV9e5c2eYO3euJGKO4Ju8VGJuKaAQ4R6wMXvZ+ibE4Y2i2DfX5u4A2KJFCwgODuaWdPz444/8yPRYs5grGfLQDeDxxx9nbRpNhSk89Mq4ublB7dq12ehN9H6dnJzYR3t7eygpKWELm5Cg+GM7z9u3b7OP5qB79+6wd+9etr8rFUr30LHWHG+qDK0hV9GlSxdWn64rb7zxBtuiEgtsJoM/i7nBEbRS52s4ODiwboc+Pj78jH4Y6qGTmCvXQydBNwBfX1/mybq7m2aPxRyCrhRQCI8ePSr5VDUlCzredGGkRN/yNHVgCBhDwbqATWoCAgJE/bmaNWvGmt6Ym6ioKHaDJDXG5OsUFpfAou1HuaWej7ZG8aNStIl5xKL1cCEpjZ9RNuN7tIY6ni7cAth0PK7Cz0aCLhOw3jUiIoK9yUsJeiqYXGSK8ZyRkZHs+xEVwWjBP//8A7169eJnpAGFCbukYVhfKrQJOmaJYx4C1o3jx8rH2h7D48WLF+sswtWBdevr1q3jlnZWrlwJ48aN45Y4YE91FPTAwEB+xjzg2ybmE6AHLSVNmjSBuLg4yaJP5Qe0aBLz9Ny7MODj3yzKM983c0yFn/PZ5dvhj2Nlkx9pD91M4Jvt7t27WQisffv2LCQntZgjhw8fhubNm8P06dNFDzVj+BoHQYwfP55lu5KYqwcHfUgl5ufOnYPPP/+ctUTF6IiUYo6kp6ezvzVuc+D3wy0PR0dHluWMC7c88Bw+hhEi/NyGDRsyYcPrEDO/8frHZivYkx1/L/3792fPXywxR/TZQ//222/5kXjgDUrHjh3Z6x2n9ZkLHPozdOhQbknHlStXYP369dySDm1iPlTwzGnPXBko0kPH5B70zHDh3mleXh5/xDzgm+tnn33GeksbAiYpHThw4MHPhD3OLSxwIjpilw6id/zvv/+y3z9+lNrzUiq6Dr3BnuQYKZMS9Frxe0ydOhX69evHRFZK0tLS2PvNnj172MKbPlO8Ths0aMDe8/St/9cF9NCrE/PziXf4GcvBUj10RQk6ljxh5jROWJIj+KayZMkSvTJgsVvXihUrIDc3l58hqgPrgN955x1uGQcKOeZcYFkd3URVD249zJo1i1tVwZa+eKNl6pnnISEh7LWEUS1DWtOqA6tZsKOhSsCxQsNc1whuXejbbAb30D/bcYxb6vlm5wmNYh6xaAOcS5S+lNIc0B66DBB7lrIUYGbqjBkz4N1332VZ4dXRs2dPydqgWhrokX3xxRei9mrHnIs6depwi6iOpUuXwqRJk7hVBu7z42N43evbeEZMcFviqaeeYl67MbXi2D4Yyy/x55ILWMb2zDPPcKt6qstyt0bPXFdoD90E4ItV7mD4HD1IrFXVJWxrqkx5pYM3RzjcQ+zBK/T71w9NNz/4t8GbbXOKOYIZ/Xhj0apVK4Na26rAGz05iTmCv18xRw6vmly1AxyJubIhQZeI+Ph4nRrQiBUetGRwCwNrn0eOHMnPiAfeKJhyprbSwaRTdegSjTI12EPBUPz9/fmRfMC+D//73/9YAqWxLHm6P/QICeBWKZn5hSTmCkdRgq40b0qXNznyELXz5JNPsulToaGh/Iz4KOlG0dxo8tClSNgyFiwrMxQ5CjqCnfewssYYUMyf7NqCW6Vk5BXA8M+sR8xDG/hCtyD/B6uWW8X3amnTK6WDPHQJ0UXQyUNXD74ZYxIkJldJ/Xenmyrd0STocnxtWqKgI9hi2VDUiTl65iM+3wCnr9/mZyyfL8f1g22vj36wejareK0oNT2WBF1CyEPXH6y9xtIoLNMZMWIEPyst5KHrBl6rmsLYcvPQsYTNGFHGDndyBXsVGIImMUfP3JrE3JKhkLuEkKDrDnYAmzhxIuuKhXXOphRZ+hvohrZqALkJOj5XrDgxFDl76NhYSF9IzK0D8tAlAkusdHlDsfaQO3Y+wz1BFHLMSjYmTGoo5KHrhjZBl9vv0NjrSM6Crq+HTmJuPZCgS4SuWb/W6B1iVnmfPn3ghx9+YE2CPv30U8lmsesCeei6oSnDHZGbh27Jgq6Ph65OzLE+3drF/KEPVrMueapVvkucklGUoGM/awzNKgFdBd1aPHR8wx8yZAjrpIf1+di049lnnzWqtEgsSNB1Q5uHjq9NOZX/GSvo3t7eOr+GTY2uHrqbo71aMR/x+R/kmVsoihJ0RCleurV76HijgsNBZs+ezcQb+2Bjf29sz6lNGMwBhdx1o7q/m5y8dDG2bnBGgxwxZA8dUYn58avJ/AxhaZCgS4S1CDpmE2NGMPZDf+ONN9jIzOjoaNb8AgedzJ07l4XXjUlQkhry0HVDW8gdkdNrUwxBl2vY3ZAsdxJz60Bx09awpSrOQ5Y7bdu21alNI45/PXjwIGs1iQtHp6qO0avFbnOqhWNacXykqcDtDS8vL/Dx8QE/Pz/mseBCAcc58E2bNmXzmjHcqmRw4MicOXO4RWgC+wJoKyXEjn6Y3CgH8DXVtWtXbhnGmDFjYM2aNdySB/b29qy9NEGoQ5HjU60ZnMqWlZXFRsZiK0hsMlH+I94glJSUPFjYj1p1jH9qzL5XzdjGhZ4zRhNwLxtDprjQY8U9RGp6QxAEoRxI0AmCIAjCAlDcHjpBEARBEFUhQScIgiAIC4AEnSBMxKmY61BUVMItgiAIcaE9dIIwAUMmfQY79p8Fb09XGD2wIzwZ0QW6dwhiZX8EQRBiQIJOECagUb/X4frNirOmf/14EoyJ6MwtgiAI46CQO0GYCSwpJAiCEAsSdIIgCIKwAKwm5P7kjO8g8VY6t9SD+5mODnbg6uwITRv4sn3Ots30ayGJiU+vLljNrVIc7O3gnx9e51b1fLB0M+w8dJ5buvPVzKegdXAAt6oHnyc+3/JgCPj5R3txSzuHT12Ctz9bzy314O/UydEefL3doX2LRvDksM7gU9P6Wq2qC7mHNPaDOrXUN+9594Vh0L9rS25Vj7q/Jf4d9Qnpj3/7e4hPTOWWeuzsbMDd1RlCGtWFp4Z3gVZBul9viLrXB4KvD3yd6MKin3bAlj2lXRjx+sLn5OLkAAF1vWH0gDDoHd6cPWZNXL6eAhNm/sitMsq/J/R95mMoKakYFfr+/WcgsKFusxWMfW9b/vteWLXlMLfKeHpkN3jmfz24BbDr8Hl4/9vN3Cpj05JXwNNdt5baP288wFZ5WgTWg29mj+OWZWI1gh448A24kqDfhCEbmxqwY/l06NdF9zfW/45cgD7jP+JWKXjR3z29nFvV03bkLDgbe4NburNv5dvQvUMwt6qn99Mfwd6jF7hVyhsThsDC6Y9wSztb/zsFw6cs5pZu1PXxhBN/zGUfTU1qejbEXbsFnm4u0KyJH/v7mgp1gq6NFQufEwRT99alvcYthH3HLnKrlPmvjYa3nhvKLe0UFhWDW4cXoLhY9yx8e3tb2LFsul4CuvfoReG6W8itMvJOLmM3frrQbcyH7GZSE1uXvgZDHmrDLdNhzusr/24huIe9APfuVXw7//79Z+HZUaViadfq2SqPn9gwF0KbN+CWdox9b/v30DkYOPFTbpUxWPhbbRP+Ziq+W/cfTJ77C7fKKDzzvXDzpttEv7lLNgnrT26V0qlNE4hcO4tblonVhNwNySbGi3/J6t3cMg34xhpzJYlb0mKOBOvk1ExYunYPt0xDVk4+i9DU6f4KE4NWw9+Fhn2nP/DyCIBzlxL1EnMES/Be/3gdt3TD2GsO/Y8zsQncUs8P6/fxI9Mgh+vL2ckBAhtU9bSj4/R3DKSiZ8cQcHOpOvfh0MlL7O+qIjMnjx+V4enuorOYI+Z4b5MDtIdeDShApsSQN1alcTT6Kj8yDWPfXAZrtkVWeNPA7ZdRr3wNJ2Ou8TPWTeVwva7g78+U1+ul6ymQm1fALfVcTkjhR6ZBLteXuu3B6LhEfmR+0Jsf0K1qtDMzO4+976nAG6TK+NSkEce6YNUeekSvUJg9ZcSDNaBbK/5IGabekXB2dIB5Lz9c7TIk4lAZMb5GZfzr1KzwPPt2acEfKSMjq+oduFRgmFuTp4RCtGT1Lm5Jy+vPDKrweym/anqaf454w3o+FV4L6tbUJ/vxz65I3l3dp3/VEP4zBhvhmi3/uxvWO5Q/UoY+z8dY5HJ9IW1DqobOywulHBjWux0/qsiB42VT+jKz1Qm6fnk3Ury3KQGr9tCH9wmF96aOfLAG9WjNHzEfuPc284Xh1S4xrlcprnkU9PLPc2jPtvyRMkpMWK4VXc0bmqGeqb6gGJb/vZRfNT1c+GeZjz6dm1d4LahbLz+lXtCLKyVaacPYaw6TVcv/7h4Z2JE/UoYpywHlcn0hbUKqJigm3c6A9MxcblXFlPv8yNCebdSK7cGT5QRdnYfupZ+HbqV6bkUeOv+oNDA57p3P17O9dbGR4i42O/cuHIu+ChevJvMz5gWThbSRJTxfoiKbd5+E5kPfgWkL18DdgiJ+VjP6RLEszXOS0/WlzkNHMOz+/fq9VRLiEKwOMCXoaXcJbcqtMg6eKO+hV43g6e2hK/Yd3zhoD12mHDlzBUZO/ZJlvC9cvg2OnjXtvrOhxFy+CZ0enQeT5vzMz5gXX2/tM901lY1ZI1dv3IZhk79g193Fq0nwxYp/dMohMfW2lJyQ0/VV388bvNREe54XXovPz676evRwc2ZbLaZmeJ+qYXcsl7yZksGO1YfcaQ9dF6x6D12OYObwgAmfQufH32eekgopnr+xd7G6lhmZk7BWjdgblyb6dq66x2+NpGXmQsth78K2vaf5GWmwNA9dbtdXm+CqiXF4c6YO3EbB0kNTM1zDPrrKS1cbcqc9dJ0gD11mFBQVwc7D57glLZWvedy/HzUgjFvVE9qsAbi6OHJLnmA5zyczHuNWRbCxy6vjBnDLusEtHV3C68ZS+ZqztbWBV4S/ATZ0UiJyu77ahFTfCAtfsz9+OMFs1z6+zwSpaWZz5OwVdg1ik5zKNPLXL5JQ+TrDyMWUJ/pwy3IhD10hlH/6mD2rLsqJb4764Ffbi310cXaABdMegdMb34eOrRuzc7qAd83YAMXUTTT05blHesKeX95iU86ws1mX0ECY8+JIiFo3S22I0tQUqhmpqu/fUimgN4siiHRrH8Qam3z+1hOKfn3K6fqq51v6mtbEk8O6wMW/FsL4h7vzM+ZBXXXChStJMPWDlZCTVzXvAJ0HfahTq6xxFf6ssdsXwrgR3fgZy4U8dIVQ/g3vyNmravctA+p48yPd+HnBRNZdLmbrAnhz4hCDwm8P9+sA57fOh+LoH1knJ9Xa9dMb/DPkATa1+O3zKXBm0/twcPW7whvuCK2hUlOB3siN5DRulWGOTnqmoGWgP9zY8xn89d00du3p06pYzsj1+lLRoWUj9rxWfvR8taJvCrBkuDK43fPjhv3cKgM7vIU0rsst3cDueCji2BkOoxH6huyVihV56PxA4aAAPP121VaLtbzcWMmYvmCrWEymMZQT56+xlpC4DpyIe7D2H49l5/CuuzLWur9VGSxpwjnp6sBwraWCdfdYImrIdYB7/arrDZepuioqGQzDH/ltNoscyIXu7YNY97fqwGY0GMExBOxRjzcD1gR56AoBE9gOCCKJyXLq9phmTBhs8rA3Rgn6Pfsx6++saS377T/+2WW4yXzfXWrw94YDRsIfn8d6f1dm7PCusvCi5MjKTYcqXF8Llm3ljxCawORVOd5EV+d149bMxq9ektWNiNyxIg9d2V7hfeG/ibN+gjsZOfxMGTjEY8azg7llOmIuJxnU9S24kX7hM0sjNv4WzPryD1bRUBnsrLds3jPcIioTefoyPyKUyvlLN6HLEx+w0lxNdG0XCKc3zmODWwjdsVoPHScMPRQWwi31YDbohFEPccsw0Gue+mRfbhkOtrxUF3rCMZu/LJholhuWQ6fKmkHoCj7Pp60gOUUb6JksmzueW2WgZ45Tp8TI+MaQ/cDuVVsZ68MjgzpWW0eNCUc4XcxUkKDLB33f27Cxzac/bof2o+bA8XPx/GxFcK972bzxsP/Xd3Qe60qUYTWCrgrzokh/+sbjcPS3OVU8RZyDrmJkv/YQs3U+y2DVB+zFrgIzxo/9/h77fsaCQoh3q48O7sRsvPDxzf/9l/9ntugDTknSFdw37dmxGaxf/KLV7WupA6MqL/FWqo4O9mxO8y8Ln2N7hoagKh/ErzX3pYfh9J/zoF3zhuycLtjb2T6YZtWgXi02gnTdZ1MeZKQj+LVV2fe4L3tg1bss4chUtcwpd7Lg2k3t89oJ6TD2vQ1nsa/aGqm26yXeHLw4pi9LZJs4uqfiI6rmwmrmoeOEphWbDrLsSm1JYDizt6CwSG0Wpq6cuZjAksWwTELffW0s2fAIm8ytMqLWzWYvolupWTB53i+wZNbYB2Vn5gJDxtX1ZccXpoPwhk8v0Kpg+eGk936Bl5/qr3ZSlj4UFBaz67tPeHPW79wQsFPcxp0nYNKjvTT2F8DP2XcsFp4a1sXkpXX4VoU/Z3Xga87QGyOlg10lsVV0ecScA27MexuCrazDHnmvwnYTRkq/mvmUxVQ8mBOrEXSloEnQMUs1rJXuNeIEQVgfUgu6GHz0/V/w9me/s8RPbMrzxNDO/BHCWKx2D11pWKvHQRCEcXi4yqceHsEE3sXvPMka3JCYiwsJuozBvUlMOore/KFOLR0JgiBUYE7EGxOGwJ9fv8zPyAMM1WP+iKZtHcJwKOQuM3BfNeyRuTC4Rxt4eWw/s++TEwShHHB/+9UFq8HWxga+mT0Wmjetxx8hrAESdIIgCIKwACjkThAEQRAWAAk6QRAEQVgAJOgEQRAEYQGQoBMEQRCEBUCCThAEQRAWAAk6QRAEQVgAJOgEQRAEYQGQoBMEQRCEBUCCThAEQRAWAAk6QRAEQVgAJOgEQRAEoXgA/g92CwHBkIliTQAAAABJRU5ErkJggg==";
+const FB = {apiKey:"AIzaSyDBrdjZ9uh-ysMc6iLl08v4vL3Y3Dn5ueg",authDomain:"ideal-pikuach.firebaseapp.com",projectId:"ideal-pikuach",storageBucket:"ideal-pikuach.firebasestorage.app",messagingSenderId:"451732362683",appId:"1:451732362683:web:2b3084efc7fefee4a2e09e"};
+const TMPLS = [
+  {id:"t1",icon:"💧",title:"רטיבות / נזילה",description:"נמצאה רטיבות / נזילה באזור",severity:"גבוה",area:"כללי"},
+  {id:"t2",icon:"⚡",title:"חשיפת חיווט",description:"חיווט חשמלי חשוף ללא הגנה",severity:"קריטי",area:"חשמל"},
+  {id:"t3",icon:"🧱",title:"סדק בקיר",description:"סדק נצפה בקיר / תקרה",severity:"בינוני",area:"שלד"},
+  {id:"t4",icon:"🪜",title:"בטיחות גובה",description:"אין הגנה מפני נפילה מגובה",severity:"קריטי",area:"כללי"},
+  {id:"t5",icon:"🔩",title:"ריתוך לא תקין",description:"חיבור ריתוך אינו עומד בדרישות",severity:"גבוה",area:"שלד"},
+  {id:"t6",icon:"🚿",title:"אינסטלציה",description:"צנרת מים / ביוב חשופה",severity:"גבוה",area:"אינסטלציה"},
+  {id:"t7",icon:"🪟",title:"חלון / דלת",description:"מסגרת / זגוגית לא מותקנת",severity:"נמוך",area:"חיפוי"},
+  {id:"t8",icon:"♻️",title:"פסולת",description:"פסולת שלא פונתה מהאתר",severity:"נמוך",area:"חצר"},
+];
+
+// ── Utils ──────────────────────────────────────────────────
+const gid = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
+const today = () => new Date().toLocaleDateString("he-IL");
+const nowt = () => new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+const overdue = d => { if(!d)return false; const dt=new Date(d),n=new Date(); return dt<n&&dt.toDateString()!==n.toDateString(); };
+const lsGet = (k,def) => { try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch{return def;} };
+const lsSet = (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch{} };
+const emptyF = () => ({description:"",severity:"בינוני",area:"כללי",floor:"",unitLoc:"",responsible:"",deadline:"",status:"פתוח",photos:[]});
+
+// ── Styles ─────────────────────────────────────────────────
+const IS = {background:"#f0f7ff",border:"1px solid #bcd4f0",borderRadius:"8px",color:"#1e3a5f",padding:"10px 12px",fontSize:"15px",width:"100%",fontFamily:"inherit",direction:"rtl"};
+const LS = {fontSize:"12px",color:"#4a7aaa",marginBottom:"4px",display:"block"};
+const BP = {background:"#1565c0",color:"#fff",border:"none",borderRadius:"10px",padding:"12px 16px",fontWeight:"700",fontSize:"14px",cursor:"pointer",fontFamily:"inherit"};
+const BS = {background:"#e8f1fb",color:"#1565c0",border:"1px solid #bcd4f0",borderRadius:"10px",padding:"12px 16px",fontSize:"14px",cursor:"pointer",fontFamily:"inherit"};
+const BD = {background:"#fef2f2",color:"#dc2626",border:"1px solid #fca5a5",borderRadius:"10px",padding:"12px 16px",fontSize:"14px",cursor:"pointer",fontFamily:"inherit"};
+
+// ── Firebase ───────────────────────────────────────────────
+function getDB(){
+  try{ if(!window._fb) window._fb=firebase.initializeApp(FB); return firebase.firestore(window._fb); }
+  catch(err){ try{return firebase.firestore();}catch{return null;} }
+}
+
+// ── Report ─────────────────────────────────────────────────
+function buildReport(tour,findings,sigs){
+  var tf=findings.filter(function(f){return f.tourId===tour.id;});
+  var si=sigs[tour.id+"_inspector"]||"",sc=sigs[tour.id+"_contractor"]||"",sr=sigs[tour.id+"_resident"]||"";
+  var rows=tf.map(function(f,i){
+    var col=SEVC[f.severity]||"#aaa";
+    var photos=f.photos&&f.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+f.photos.map(function(p){return '<img src="'+p+'" style="width:85px;height:85px;object-fit:cover;border-radius:6px;border:1px solid #bcd4f0"/>';}).join("")+"</div>":"";
+    return '<div style="border:1px solid #bcd4f0;border-right:4px solid '+col+';border-radius:8px;padding:10px;margin-bottom:8px;page-break-inside:avoid">'
+      +'<b>'+(i+1)+'. '+(f.description||"")+'</b><br/>'
+      +'<span style="background:'+col+'22;color:'+col+';border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">'+f.severity+'</span>'
+      +'<span style="background:#e8f1fb;color:#1565c0;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">'+f.area+'</span>'
+      +(f.floor?'<span style="background:#e8f1fb;color:#1565c0;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">קומה '+f.floor+'</span>':"")
+      +(f.unitLoc?'<span style="background:#ede9fe;color:#7c3aed;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">'+f.unitLoc+'</span>':"")
+      +'<span style="background:#e8f1fb;color:#1565c0;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">'+f.status+'</span><br/>'
+      +'<span style="color:#4a7aaa;font-size:11px">'+(f.responsible?"👤 "+f.responsible+" ":"")+(f.deadline?"📅 "+f.deadline:"")+'</span>'
+      +photos+'</div>';
+  }).join("");
+  var stats=SEV.map(function(s){var c=tf.filter(function(f){return f.severity===s;}).length;return c?'<div style="background:#e8f1fb;border-radius:8px;padding:8px 14px;text-align:center;border:1px solid #bcd4f0"><div style="font-size:19px;font-weight:900;color:'+SEVC[s]+'">'+c+'</div><div>'+s+'</div></div>':"";}).join("");
+  var closed=tf.filter(function(f){return f.status==="סגור";}).length;
+  return '<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8"><title>דוח '+tour.name+'</title>'
+    +'<style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;direction:rtl;color:#1e3a5f;margin:0;padding:20px;background:#fff;font-size:13px}@media print{body{padding:10px}@page{margin:1cm}}</style>'
+    +'</head><body>'
+    +'<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:14px;border-bottom:2px solid #1565c0">'
+    +'<img src="data:image/png;base64,'+LOGO+'" style="max-height:50px"/>'
+    +'<div><h1 style="color:#1565c0;font-size:19px;margin:0 0 3px">דוח סיור פיקוח</h1>'
+    +'<div style="color:#4a7aaa;font-size:11px"><b>פרויקט:</b> '+(tour.project||"—")+' | <b>סיור:</b> '+tour.name+' | <b>מפקח:</b> '+(tour.inspector||"—")+(tour.contractor?' | <b>קבלן:</b> '+tour.contractor:"")
+    +' | <b>תאריך:</b> '+tour.date+' '+tour.time+'</div></div></div>'
+    +'<div style="display:flex;gap:10px;margin:14px 0;flex-wrap:wrap"><div style="background:#e8f1fb;border-radius:8px;padding:8px 14px;text-align:center;border:1px solid #bcd4f0"><div style="font-size:19px;font-weight:900">'+tf.length+'</div><div>סה"כ</div></div>'
+    +stats+'<div style="background:#e8f1fb;border-radius:8px;padding:8px 14px;text-align:center;border:1px solid #bcd4f0"><div style="font-size:19px;font-weight:900;color:#059669">'+closed+'</div><div>סגורים</div></div></div>'
+    +'<hr style="border:none;border-top:1px solid #bcd4f0;margin:10px 0"/>'+rows
+    +'<div style="display:flex;gap:16px;margin-top:26px;padding-top:14px;border-top:2px solid #bcd4f0;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:120px;text-align:center">'+(si?'<img src="'+si+'" style="max-width:150px;height:55px;object-fit:contain;border:1px solid #bcd4f0;border-radius:6px;margin:0 auto 4px;display:block"/>':"<div style='border-bottom:1px solid #7fafd6;height:55px;margin-bottom:4px'></div>")+'<div style="font-size:11px;color:#4a7aaa;font-weight:700">מפקח</div></div>'
+    +'<div style="flex:1;min-width:120px;text-align:center">'+(sc?'<img src="'+sc+'" style="max-width:150px;height:55px;object-fit:contain;border:1px solid #bcd4f0;border-radius:6px;margin:0 auto 4px;display:block"/>':"<div style='border-bottom:1px solid #7fafd6;height:55px;margin-bottom:4px'></div>")+'<div style="font-size:11px;color:#4a7aaa;font-weight:700">קבלן</div></div>'
+    +'<div style="flex:1;min-width:120px;text-align:center">'+(sr?'<img src="'+sr+'" style="max-width:150px;height:55px;object-fit:contain;border:1px solid #bcd4f0;border-radius:6px;margin:0 auto 4px;display:block"/>':"<div style='border-bottom:1px solid #7fafd6;height:55px;margin-bottom:4px'></div>")+'<div style="font-size:11px;color:#4a7aaa;font-weight:700">דייר</div></div>'
+    +'</div></body></html>';
+}
+
+function printReport(tour,findings,sigs){
+  var w=window.open("","_blank");
+  if(w){w.document.write(buildReport(tour,findings,sigs));w.document.close();setTimeout(function(){w.print();},800);}
+}
+
+function shareReport(tour,findings,sigs){
+  var html=buildReport(tour,findings,sigs);
+  var w=window.open("","_blank");
+  if(!w){alert("אפשר גישה לחלונות קופצים");return;}
+  w.document.write(html);w.document.close();
+  setTimeout(function(){
+    var b=w.document.createElement("div");
+    b.style.cssText="position:fixed;top:0;left:0;right:0;background:#1565c0;color:#fff;padding:11px 15px;font-family:Arial;font-size:14px;direction:rtl;z-index:9999;display:flex;justify-content:space-between;align-items:center;gap:10px";
+    b.innerHTML='<span>📄 לשמירה כ-PDF: לחץ הדפס ← "שמור כ-PDF"</span><button onclick="window.print()" style="background:#fff;color:#1565c0;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">🖨️ שמור PDF</button>';
+    w.document.body.insertBefore(b,w.document.body.firstChild);
+    w.document.body.style.paddingTop="55px";
+  },600);
+}
+
+// ── Confirm Dialog ─────────────────────────────────────────
+function Confirm(props){
+  return e("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}},
+    e("div",{style:{background:"#fff",borderRadius:"16px",padding:"24px",maxWidth:"320px",width:"100%",textAlign:"center"}},
+      e("div",{style:{fontSize:"34px",marginBottom:"10px"}},"🗑️"),
+      e("div",{style:{fontWeight:"700",fontSize:"15px",color:"#1e3a5f",marginBottom:"20px"}},props.msg),
+      e("div",{style:{display:"flex",gap:"10px"}},
+        e("button",{onClick:props.onOk,style:{...BD,flex:1,padding:"12px"}},"מחק"),
+        e("button",{onClick:props.onCancel,style:{...BS,flex:1,padding:"12px"}},"ביטול")
+      )
+    )
+  );
+}
+
+// ── Signature Pad ──────────────────────────────────────────
+function SigPad(props){
+  var ref=useRef(),draw=useRef(false),last=useRef(null);
+  var [drawn,setDrawn]=useState(false);
+  function getPos(ev,c){var r=c.getBoundingClientRect(),s=ev.touches?ev.touches[0]:ev;return{x:(s.clientX-r.left)*(c.width/r.width),y:(s.clientY-r.top)*(c.height/r.height)};}
+  function dn(ev){ev.preventDefault();draw.current=true;last.current=getPos(ev,ref.current);}
+  function mv(ev){ev.preventDefault();if(!draw.current)return;var c=ref.current,ctx=c.getContext("2d"),p=getPos(ev,c);ctx.beginPath();ctx.moveTo(last.current.x,last.current.y);ctx.lineTo(p.x,p.y);ctx.strokeStyle="#1565c0";ctx.lineWidth=3;ctx.lineCap="round";ctx.stroke();last.current=p;setDrawn(true);}
+  function up(){draw.current=false;}
+  function clr(){ref.current.getContext("2d").clearRect(0,0,ref.current.width,ref.current.height);setDrawn(false);}
+  return e("div",{style:{background:"#e8f1fb",border:"1px solid #bcd4f0",borderRadius:"12px",padding:"14px",marginTop:"10px"}},
+    e("div",{style:{fontWeight:"700",marginBottom:"8px",color:"#1e3a5f"}},"✍️ "+props.label),
+    props.existing&&e("div",{style:{marginBottom:"8px",display:"flex",alignItems:"center",gap:"8px"}},
+      e("img",{src:props.existing,style:{height:"32px",border:"1px solid #bcd4f0",borderRadius:"6px",background:"#fff"}}),
+      e("span",{style:{fontSize:"12px",color:"#059669"}},"✓ קיימת")
+    ),
+    e("canvas",{ref:ref,width:600,height:150,style:{background:"#fff",borderRadius:"8px",border:"2px dashed #7fafd6",width:"100%",touchAction:"none",display:"block"},onMouseDown:dn,onMouseMove:mv,onMouseUp:up,onMouseLeave:up,onTouchStart:dn,onTouchMove:mv,onTouchEnd:up}),
+    e("div",{style:{fontSize:"11px",color:"#7fafd6",marginTop:"4px",textAlign:"center"}},"חתמו כאן באצבע"),
+    e("div",{style:{display:"flex",gap:"8px",marginTop:"10px"}},
+      e("button",{onClick:function(){drawn&&props.onSave(ref.current.toDataURL("image/png"));},style:{...BP,flex:1,opacity:drawn?1:.5,padding:"10px"}},"✓ אשר"),
+      e("button",{onClick:clr,style:{...BS,flex:1,padding:"10px"}},"🗑 נקה"),
+      e("button",{onClick:props.onCancel,style:{...BS,flex:1,padding:"10px"}},"ביטול")
+    )
+  );
+}
+
+// ── Signature Section ──────────────────────────────────────
+function SigSection(props){
+  var [active,setActive]=useState(null);
+  var types=[{k:"inspector",l:"מפקח"},{k:"contractor",l:"קבלן"},{k:"resident",l:"דייר"}];
+  return e("div",{style:{marginTop:"12px"}},
+    e("div",{style:{fontSize:"13px",fontWeight:"700",marginBottom:"8px"}},"חתימות:"),
+    e("div",{style:{display:"flex",gap:"8px"}},
+      types.map(function(t){
+        var sig=props.sigs[props.tourId+"_"+t.k];
+        return e("div",{key:t.k,style:{flex:1}},
+          sig
+            ?e("div",{style:{background:"#f0fff4",border:"1px solid #6ee7b7",borderRadius:"10px",padding:"8px",textAlign:"center",cursor:"pointer"},onClick:function(){setActive(t.k);}},
+                e("img",{src:sig,style:{height:"28px",maxWidth:"100%",objectFit:"contain"}}),
+                e("div",{style:{fontSize:"10px",color:"#059669",marginTop:"2px"}},"✓ "+t.l)
+              )
+            :e("button",{onClick:function(){setActive(t.k);},style:{...BS,width:"100%",padding:"9px 4px",fontSize:"12px"}},"✍️ "+t.l)
+        );
+      })
+    ),
+    active&&e(SigPad,{label:types.find(function(t){return t.k===active;})||{l:""},
+      existing:props.sigs[props.tourId+"_"+active],
+      onSave:function(s){props.setSigs(function(p){var n=Object.assign({},p);n[props.tourId+"_"+active]=s;return n;});setActive(null);},
+      onCancel:function(){setActive(null);}
+    })
+  );
+}
+
+// ── Status Badge ───────────────────────────────────────────
+function StatusBadge(props){
+  var c={"פתוח":"#ef4444","בטיפול":"#eab308","סגור":"#22c55e"}[props.status]||"#9ca3af";
+  return e("div",{style:{background:c+"22",color:c,border:"1px solid "+c+"55",borderRadius:"20px",padding:"3px 10px",fontSize:"12px",whiteSpace:"nowrap"}},props.status);
+}
+
+// ── Photo Buttons ──────────────────────────────────────────
+function PhotoBtns(props){
+  var fr=useRef(),cr=useRef();
+  function handle(ev){
+    var files=Array.from(ev.target.files);
+    Promise.all(files.map(function(f){return new Promise(function(r){var rd=new FileReader();rd.onload=function(){r(rd.result);};rd.readAsDataURL(f);});})).then(props.onAdd);
+    ev.target.value="";
+  }
+  return e("div",{style:{display:"flex",gap:"8px",marginTop:"10px"}},
+    e("input",{ref:cr,type:"file",accept:"image/*",capture:"environment",style:{display:"none"},onChange:handle}),
+    e("input",{ref:fr,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:handle}),
+    e("button",{onClick:function(){cr.current&&cr.current.click();},style:{...BP,flex:1,fontSize:"13px",padding:"11px"}},"📸 צלם"),
+    e("button",{onClick:function(){fr.current&&fr.current.click();},style:{...BS,flex:1,fontSize:"13px",padding:"11px"}},"🖼️ גלריה")
+  );
+}
+
+// ── Finding Card ───────────────────────────────────────────
+function FindingCard(props){
+  var f=props.f;
+  var [open,setOpen]=useState(false);
+  var [del,setDel]=useState(false);
+  var [edit,setEdit]=useState(false);
+  var [ed,setEd]=useState(null);
+  var pr=useRef();
+  var col=SEVC[f.severity]||"#9ca3af";
+  var late=overdue(f.deadline)&&f.status!=="סגור";
+
+  function startEdit(){setEd(Object.assign({},f));setEdit(true);setOpen(true);}
+  function saveEdit(){if(!ed||!ed.description.trim())return;props.onEdit(f.id,ed);setEdit(false);setEd(null);}
+  function handleEditFiles(ev){
+    var files=Array.from(ev.target.files);
+    Promise.all(files.map(function(fl){return new Promise(function(r){var rd=new FileReader();rd.onload=function(){r(rd.result);};rd.readAsDataURL(fl);});})).then(function(imgs){setEd(function(d){return Object.assign({},d,{photos:(d.photos||[]).concat(imgs)});});});
+    ev.target.value="";
+  }
+
+  var badges=e("div",{style:{display:"flex",flexWrap:"wrap",gap:"5px"}},
+    e("span",{style:{background:col+"22",color:col,borderRadius:"20px",padding:"2px 9px",fontSize:"12px"}},f.severity),
+    e("span",{style:{background:"#e8f1fb",color:"#4a7aaa",borderRadius:"20px",padding:"2px 9px",fontSize:"12px"}},f.area),
+    f.floor&&e("span",{style:{background:"#e8f1fb",color:"#4a7aaa",borderRadius:"20px",padding:"2px 9px",fontSize:"12px"}},"קומה "+f.floor),
+    f.unitLoc&&e("span",{style:{background:"#ede9fe",color:"#7c3aed",borderRadius:"20px",padding:"2px 9px",fontSize:"12px"}},f.unitLoc),
+    props.showTour&&f.tourName&&e("span",{style:{background:"#e0f2fe",color:"#0369a1",borderRadius:"20px",padding:"2px 9px",fontSize:"12px"}},f.tourName),
+    late&&e("span",{style:{background:"#fef2f2",color:"#ef4444",borderRadius:"20px",padding:"2px 9px",fontSize:"12px"}},"⏰ באיחור")
+  );
+
+  return e("div",null,
+    del&&e(Confirm,{msg:'למחוק: '+f.description.slice(0,25)+'?',onOk:function(){props.onDelete(f.id);setDel(false);},onCancel:function(){setDel(false);}}),
+    e("div",{style:{background:"#fff",border:"1px solid "+(late?"#fca5a5":col+"44"),borderRight:"4px solid "+(late?"#ef4444":col),borderRadius:"10px",marginBottom:"10px",overflow:"hidden",boxShadow:"0 1px 6px rgba(21,101,192,.07)"}},
+      e("div",{onClick:function(){if(!edit)setOpen(!open);},style:{padding:"13px",cursor:"pointer"}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"}},
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontWeight:"600",fontSize:"15px",marginBottom:"6px",color:"#1e3a5f"}},
+              late&&e("span",{style:{color:"#ef4444",marginLeft:"6px"}},"⏰"),
+              f.description
+            ),
+            badges
+          ),
+          e(StatusBadge,{status:f.status})
+        )
+      ),
+      open&&!edit&&e("div",{style:{borderTop:"1px solid #e0edf8",padding:"13px",background:"#f8faff"}},
+        f.responsible&&e("div",{style:{fontSize:"13px",color:"#4a7aaa",marginBottom:"5px"}},"👤 "+f.responsible),
+        f.deadline&&e("div",{style:{fontSize:"13px",color:late?"#ef4444":"#4a7aaa",marginBottom:"5px"}},"📅 "+f.deadline+(late?" (באיחור!)":"")),
+        f.photos&&f.photos.length>0&&e("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"12px"}},
+          f.photos.map(function(p,i){return e("img",{key:i,src:p,style:{width:"78px",height:"78px",objectFit:"cover",borderRadius:"8px",border:"1px solid #bcd4f0",cursor:"pointer"},onClick:function(){window.open(p,"_blank");}});})
+        ),
+        e("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}},
+          STATS.map(function(s){return e("button",{key:s,onClick:function(){props.onStatus(f.id,s);},style:{background:f.status===s?"#1565c0":"#e8f1fb",color:f.status===s?"#fff":"#1565c0",border:"1px solid "+(f.status===s?"#1565c0":"#bcd4f0"),borderRadius:"8px",padding:"7px 12px",fontSize:"13px",cursor:"pointer",fontFamily:"inherit"}},s);})
+        ),
+        e("div",{style:{display:"flex",gap:"8px"}},
+          e("button",{onClick:startEdit,style:{...BS,flex:1,padding:"10px",fontSize:"13px"}},"✏️ ערוך"),
+          props.onDelete&&e("button",{onClick:function(){setDel(true);},style:{...BD,flex:1,padding:"10px",fontSize:"13px"}},"🗑 מחק")
+        )
+      ),
+      open&&edit&&ed&&e("div",{style:{borderTop:"1px solid #e0edf8",padding:"13px",background:"#f0f7ff"}},
+        e("div",{style:{fontWeight:"700",marginBottom:"10px",color:"#1e3a5f"}},"✏️ עריכת ממצא"),
+        e("textarea",{value:ed.description,onChange:function(ev){setEd(function(d){return Object.assign({},d,{description:ev.target.value});});},rows:3,style:{...IS,resize:"vertical",marginBottom:"8px"}}),
+        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"8px"}},
+          e("div",null,e("span",{style:LS},"חומרה"),e("select",{value:ed.severity,onChange:function(ev){setEd(function(d){return Object.assign({},d,{severity:ev.target.value});});},style:IS},SEV.map(function(s){return e("option",{key:s},s);}))),
+          e("div",null,e("span",{style:LS},"אזור"),e("select",{value:ed.area,onChange:function(ev){setEd(function(d){return Object.assign({},d,{area:ev.target.value});});},style:IS},AREAS.map(function(a){return e("option",{key:a},a);}))),
+          e("div",null,e("span",{style:LS},"קומה"),e("select",{value:ed.floor||"",onChange:function(ev){setEd(function(d){return Object.assign({},d,{floor:ev.target.value});});},style:IS},[e("option",{key:"",value:""},"—")].concat(FLOORS.map(function(fl){return e("option",{key:fl,value:fl},fl==="קרקע"?"קרקע":fl==="מרתף"?"מרתף":"קומה "+fl);})))),
+          e("div",null,e("span",{style:LS},"מיקום בדירה"),e("select",{value:ed.unitLoc||"",onChange:function(ev){setEd(function(d){return Object.assign({},d,{unitLoc:ev.target.value});});},style:IS},[e("option",{key:"",value:""},"—")].concat(ULOCS.map(function(l){return e("option",{key:l},l);})))),
+          e("div",null,e("span",{style:LS},"אחראי"),e("input",{value:ed.responsible||"",onChange:function(ev){setEd(function(d){return Object.assign({},d,{responsible:ev.target.value});});},style:IS})),
+          e("div",null,e("span",{style:LS},"תאריך יעד"),e("input",{type:"date",value:ed.deadline||"",onChange:function(ev){setEd(function(d){return Object.assign({},d,{deadline:ev.target.value});});},style:IS})),
+          e("div",{style:{gridColumn:"span 2"}},e("span",{style:LS},"סטטוס"),e("select",{value:ed.status,onChange:function(ev){setEd(function(d){return Object.assign({},d,{status:ev.target.value});});},style:IS},STATS.map(function(s){return e("option",{key:s},s);})))
+        ),
+        ed.photos&&ed.photos.length>0&&e("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"10px"}},
+          ed.photos.map(function(p,i){return e("div",{key:i,style:{position:"relative"}},
+            e("img",{src:p,style:{width:"64px",height:"64px",objectFit:"cover",borderRadius:"8px",border:"1px solid #bcd4f0"}}),
+            e("button",{onClick:function(){setEd(function(d){return Object.assign({},d,{photos:d.photos.filter(function(_,j){return j!==i;})});});},style:{position:"absolute",top:"-6px",right:"-6px",background:"#ef4444",color:"#fff",border:"none",borderRadius:"50%",width:"20px",height:"20px",fontSize:"12px",cursor:"pointer",lineHeight:"20px",textAlign:"center",padding:"0"}},"✕")
+          );})
+        ),
+        e("input",{ref:pr,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:handleEditFiles}),
+        e("button",{onClick:function(){pr.current&&pr.current.click();},style:{...BS,width:"100%",marginBottom:"10px",fontSize:"13px"}},"📷 הוסף תמונות"),
+        e("div",{style:{display:"flex",gap:"8px"}},
+          e("button",{onClick:saveEdit,style:{...BP,flex:1,padding:"11px"}},"💾 שמור"),
+          e("button",{onClick:function(){setEdit(false);setEd(null);},style:{...BS,flex:1,padding:"11px"}},"ביטול")
+        )
+      )
+    )
+  );
+}
+
+// ── Finding Form ───────────────────────────────────────────
+function FindingForm(props){
+  var [custArea,setCustArea]=useState(false);
+  var [areaVal,setAreaVal]=useState("");
+  var [custUnit,setCustUnit]=useState(false);
+  var [unitVal,setUnitVal]=useState("");
+  var allAreas=AREAS.concat(props.extraAreas||[]);
+  var allUnits=ULOCS.concat(props.extraUnits||[]);
+  var f=props.finding;
+
+  function upd(k,v){props.onChange(Object.assign({},f,{[k]:v}));}
+
+  return e("div",{style:{background:"#e8f1fb",border:"1px solid #bcd4f0",borderRadius:"12px",padding:"15px",marginTop:"10px"}},
+    e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}},
+      e("div",{style:{fontWeight:"700",color:"#1e3a5f",fontSize:"15px"}},"ממצא חדש"),
+      e("button",{onClick:props.onTemplates,style:{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:"8px",color:"#7c3aed",fontSize:"13px",padding:"5px 11px",cursor:"pointer",fontFamily:"inherit"}},"⚡ תבניות")
+    ),
+    e("textarea",{value:f.description,onChange:function(ev){upd("description",ev.target.value);},placeholder:"תיאור הממצא *",rows:3,style:{...IS,resize:"vertical"}}),
+    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginTop:"9px"}},
+      e("div",null,e("span",{style:LS},"חומרה"),e("select",{value:f.severity,onChange:function(ev){upd("severity",ev.target.value);},style:IS},SEV.map(function(s){return e("option",{key:s},s);}))),
+      e("div",null,
+        e("span",{style:LS},"אזור"),
+        !custArea
+          ?e("select",{value:f.area,onChange:function(ev){if(ev.target.value==="__c"){setCustArea(true);}else{upd("area",ev.target.value);}},style:IS},
+              allAreas.map(function(a){return e("option",{key:a},a);}).concat([e("option",{key:"__c",value:"__c"},"+ הוסף...")])
+            )
+          :e("div",{style:{display:"flex",gap:"6px"}},
+              e("input",{value:areaVal,onChange:function(ev){setAreaVal(ev.target.value);},placeholder:"מיקום חדש",style:{...IS,flex:1},autoFocus:true}),
+              e("button",{onClick:function(){if(areaVal.trim()){props.onAddArea(areaVal.trim());upd("area",areaVal.trim());setCustArea(false);setAreaVal("");}},style:{...BP,padding:"10px 11px"}},"✓"),
+              e("button",{onClick:function(){setCustArea(false);setAreaVal("");},style:{...BS,padding:"10px 11px"}},"✕")
+            )
+      ),
+      e("div",null,e("span",{style:LS},"קומה"),e("select",{value:f.floor,onChange:function(ev){upd("floor",ev.target.value);},style:IS},[e("option",{key:"",value:""},"—")].concat(FLOORS.map(function(fl){return e("option",{key:fl,value:fl},fl==="קרקע"?"קרקע":fl==="מרתף"?"מרתף":"קומה "+fl);})))),
+      e("div",null,
+        e("span",{style:LS},"מיקום בדירה"),
+        !custUnit
+          ?e("select",{value:f.unitLoc||"",onChange:function(ev){if(ev.target.value==="__c"){setCustUnit(true);}else{upd("unitLoc",ev.target.value);}},style:IS},
+              [e("option",{key:"",value:""},"—")].concat(allUnits.map(function(l){return e("option",{key:l},l);})).concat([e("option",{key:"__c",value:"__c"},"+ הוסף...")])
+            )
+          :e("div",{style:{display:"flex",gap:"6px"}},
+              e("input",{value:unitVal,onChange:function(ev){setUnitVal(ev.target.value);},placeholder:"מיקום בדירה",style:{...IS,flex:1},autoFocus:true}),
+              e("button",{onClick:function(){if(unitVal.trim()){props.onAddUnit(unitVal.trim());upd("unitLoc",unitVal.trim());setCustUnit(false);setUnitVal("");}},style:{...BP,padding:"10px 11px"}},"✓"),
+              e("button",{onClick:function(){setCustUnit(false);setUnitVal("");},style:{...BS,padding:"10px 11px"}},"✕")
+            )
+      ),
+      e("div",null,e("span",{style:LS},"אחראי לתיקון"),e("input",{value:f.responsible,onChange:function(ev){upd("responsible",ev.target.value);},placeholder:"שם / גורם",style:IS})),
+      e("div",null,e("span",{style:LS},"תאריך יעד"),e("input",{type:"date",value:f.deadline,onChange:function(ev){upd("deadline",ev.target.value);},style:IS}))
+    ),
+    e(PhotoBtns,{onAdd:function(imgs){props.onChange(Object.assign({},f,{photos:f.photos.concat(imgs)}));}}),
+    f.photos.length>0&&e("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap",marginTop:"9px"}},
+      f.photos.map(function(p,i){return e("div",{key:i,style:{position:"relative"}},
+        e("img",{src:p,style:{width:"66px",height:"66px",objectFit:"cover",borderRadius:"8px",border:"1px solid #bcd4f0"}}),
+        e("button",{onClick:function(){props.onChange(Object.assign({},f,{photos:f.photos.filter(function(_,j){return j!==i;})}));},style:{position:"absolute",top:"-6px",right:"-6px",background:"#ef4444",color:"#fff",border:"none",borderRadius:"50%",width:"20px",height:"20px",fontSize:"12px",cursor:"pointer",lineHeight:"20px",textAlign:"center",padding:"0"}},"✕")
+      );})
+    ),
+    e("div",{style:{display:"flex",gap:"8px",marginTop:"13px"}},
+      e("button",{onClick:props.onSave,style:{...BP,flex:1,padding:"13px"}},"שמור ממצא"),
+      e("button",{onClick:props.onCancel,style:{...BS,flex:1,padding:"13px"}},"ביטול")
+    )
+  );
+}
+
+// ── Templates Picker ───────────────────────────────────────
+function TmplPicker(props){
+  return e("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:200,display:"flex",alignItems:"flex-end"},onClick:props.onClose},
+    e("div",{style:{background:"#f0f7ff",borderRadius:"16px 16px 0 0",padding:"18px",width:"100%",maxHeight:"80vh",overflowY:"auto"},onClick:function(ev){ev.stopPropagation();}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
+        e("div",{style:{fontWeight:"700",fontSize:"16px",color:"#1e3a5f"}},"⚡ תבניות"),
+        e("div",{style:{display:"flex",gap:"8px"}},
+          e("button",{onClick:function(){props.onClose();props.onManage();},style:{...BS,fontSize:"12px",padding:"5px 10px"}},"⚙️ נהל"),
+          e("button",{onClick:props.onClose,style:{background:"none",border:"none",color:"#7fafd6",fontSize:"22px",cursor:"pointer"}},"✕")
+        )
+      ),
+      props.templates.length===0
+        ?e("div",{style:{textAlign:"center",color:"#7fafd6",padding:"30px 0"}},"אין תבניות.")
+        :e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}},
+            props.templates.map(function(t){
+              return e("button",{key:t.id,onClick:function(){props.onSelect(t);props.onClose();},style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"10px",padding:"13px",textAlign:"right",cursor:"pointer",fontFamily:"inherit",color:"#1e3a5f"}},
+                e("div",{style:{fontSize:"24px",marginBottom:"4px"}},t.icon),
+                e("div",{style:{fontWeight:"700",fontSize:"13px",marginBottom:"2px"}},t.title),
+                e("div",{style:{fontSize:"11px",color:"#7fafd6"}},t.description.slice(0,38)),
+                e("div",{style:{marginTop:"6px"}},e("span",{style:{background:SEVC[t.severity]+"22",color:SEVC[t.severity],borderRadius:"20px",padding:"2px 8px",fontSize:"11px"}},t.severity))
+              );
+            })
+          )
+    )
+  );
+}
+
+// ── Templates Manager ──────────────────────────────────────
+function TmplMgr(props){
+  var ICONS=["📋","💧","⚡","🧱","🪜","🔩","🚿","🪟","♻️","🔥","🌊","🏗","⚠️","🔐","🪵","🛗","🔌","🪣"];
+  var [editing,setEditing]=useState(null);
+  var [form,setForm]=useState({icon:"📋",title:"",description:"",severity:"בינוני",area:"כללי"});
+  function updf(k,v){setForm(function(f){return Object.assign({},f,{[k]:v});});}
+  function startEdit(t){setEditing(t);setForm({icon:t.icon,title:t.title,description:t.description,severity:t.severity,area:t.area});}
+  function startNew(){setEditing("new");setForm({icon:"📋",title:"",description:"",severity:"בינוני",area:"כללי"});}
+  function save(){
+    if(!form.title.trim())return;
+    if(editing==="new"){props.onUpdate(props.templates.concat([Object.assign({},form,{id:gid()})]))}
+    else{props.onUpdate(props.templates.map(function(t){return t.id===editing.id?Object.assign({},editing,form):t;}));}
+    setEditing(null);
+  }
+  return e("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"},onClick:props.onClose},
+    e("div",{style:{background:"#f0f7ff",borderRadius:"16px",padding:"16px",width:"100%",maxWidth:"520px",maxHeight:"90vh",overflowY:"auto"},onClick:function(ev){ev.stopPropagation();}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
+        e("div",{style:{fontWeight:"900",fontSize:"16px",color:"#1e3a5f"}},"ניהול תבניות"),
+        e("button",{onClick:props.onClose,style:{background:"none",border:"none",color:"#7fafd6",fontSize:"22px",cursor:"pointer"}},"✕")
+      ),
+      editing
+        ?e("div",{style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"12px",padding:"14px",marginBottom:"14px"}},
+            e("div",{style:{fontWeight:"700",marginBottom:"10px"}},editing==="new"?"תבנית חדשה":"עריכה"),
+            e("div",{style:{marginBottom:"10px"}},
+              e("span",{style:LS},"אייקון"),
+              e("div",{style:{display:"flex",flexWrap:"wrap",gap:"6px"}},
+                ICONS.map(function(ic){return e("button",{key:ic,onClick:function(){updf("icon",ic);},style:{fontSize:"21px",background:form.icon===ic?"#1565c0":"#e8f1fb",border:"2px solid "+(form.icon===ic?"#1565c0":"#bcd4f0"),borderRadius:"8px",padding:"4px 7px",cursor:"pointer"}},ic);})
+              )
+            ),
+            e("div",{style:{marginBottom:"8px"}},e("span",{style:LS},"כותרת"),e("input",{value:form.title,onChange:function(ev){updf("title",ev.target.value);},style:IS})),
+            e("div",{style:{marginBottom:"8px"}},e("span",{style:LS},"תיאור"),e("textarea",{value:form.description,onChange:function(ev){updf("description",ev.target.value);},rows:2,style:{...IS,resize:"vertical"}})),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"12px"}},
+              e("div",null,e("span",{style:LS},"חומרה"),e("select",{value:form.severity,onChange:function(ev){updf("severity",ev.target.value);},style:IS},SEV.map(function(s){return e("option",{key:s},s);}))),
+              e("div",null,e("span",{style:LS},"אזור"),e("select",{value:form.area,onChange:function(ev){updf("area",ev.target.value);},style:IS},AREAS.map(function(a){return e("option",{key:a},a);})))
+            ),
+            e("div",{style:{display:"flex",gap:"8px"}},
+              e("button",{onClick:save,style:{...BP,flex:1,padding:"10px"}},"שמור"),
+              e("button",{onClick:function(){setEditing(null);},style:{...BS,flex:1,padding:"10px"}},"ביטול")
+            )
+          )
+        :e("button",{onClick:startNew,style:{...BP,width:"100%",marginBottom:"12px"}},"+ תבנית חדשה"),
+      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}},
+        props.templates.map(function(t){
+          return e("div",{key:t.id,style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"10px",padding:"12px"}},
+            e("div",{style:{fontSize:"22px",marginBottom:"3px"}},t.icon),
+            e("div",{style:{fontWeight:"700",fontSize:"13px",marginBottom:"2px"}},t.title),
+            e("div",{style:{fontSize:"11px",color:"#7fafd6",marginBottom:"8px"}},t.description.slice(0,38)),
+            e("div",{style:{display:"flex",gap:"4px"}},
+              e("button",{onClick:function(){startEdit(t);},style:{...BS,flex:1,padding:"6px",fontSize:"12px"}},"✏️"),
+              e("button",{onClick:function(){props.onUpdate(props.templates.filter(function(x){return x.id!==t.id;}));},style:{...BD,flex:1,padding:"6px",fontSize:"12px"}},"🗑")
+            )
+          );
+        })
+      )
+    )
+  );
+}
+
+// ── Overdue Alert ──────────────────────────────────────────
+function OvAlert(props){
+  var ov=props.findings.filter(function(f){return f.status!=="סגור"&&overdue(f.deadline);});
+  if(!ov.length)return null;
+  return e("div",{style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:"10px",padding:"10px 13px",marginBottom:"13px",display:"flex",alignItems:"center",gap:"10px"}},
+    e("span",{style:{fontSize:"20px"}},"⚠️"),
+    e("div",null,
+      e("div",{style:{fontWeight:"700",color:"#dc2626",fontSize:"14px"}},ov.length+" ממצאים באיחור"),
+      e("div",{style:{fontSize:"12px",color:"#ef4444"}},ov.slice(0,2).map(function(f){return f.description;}).join(" • "))
+    )
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────
+function App(){
+  var [view,setView]=useState("dashboard");
+  var [tours,setTours]=useState(function(){return lsGet("ideal_tours",[]);});
+  var [findings,setFindings]=useState(function(){return lsGet("ideal_findings",[]);});
+  var [sigs,setSigsRaw]=useState(function(){return lsGet("ideal_sigs",{});});
+  var [templates,setTemplates]=useState(function(){return lsGet("ideal_templates",TMPLS);});
+  var [extraAreas,setExtraAreas]=useState(function(){return lsGet("ideal_areas",[]);});
+  var [extraUnits,setExtraUnits]=useState(function(){return lsGet("ideal_units",[]);});
+  var [activeTour,setActiveTour]=useState(null);
+  var [newF,setNewF]=useState(emptyF());
+  var [showForm,setShowForm]=useState(false);
+  var [showPicker,setShowPicker]=useState(false);
+  var [showMgr,setShowMgr]=useState(false);
+  var [selReport,setSelReport]=useState(null);
+  var [delTourC,setDelTourC]=useState(null);
+  var [filterSt,setFilterSt]=useState("הכל");
+  var [filterSev,setFilterSev]=useState("הכל");
+  var [nt,setNt]=useState({name:"",inspector:"",project:"",contractor:""});
+  var [syncSt,setSyncSt]=useState("idle");
+  var [repAddId,setRepAddId]=useState(null);
+  var [repF,setRepF]=useState(emptyF());
+  var syncTimer=useRef(null);
+  var toursRef=useRef(tours);
+  var findingsRef=useRef(findings);
+  var sigsRef=useRef(sigs);
+  var templatesRef=useRef(templates);
+  var extraAreasRef=useRef(extraAreas);
+  var extraUnitsRef=useRef(extraUnits);
+
+  useEffect(function(){lsSet("ideal_tours",tours);toursRef.current=tours;},[tours]);
+  useEffect(function(){lsSet("ideal_findings",findings);findingsRef.current=findings;},[findings]);
+  useEffect(function(){lsSet("ideal_areas",extraAreas);extraAreasRef.current=extraAreas;},[extraAreas]);
+  useEffect(function(){lsSet("ideal_units",extraUnits);extraUnitsRef.current=extraUnits;},[extraUnits]);
+  useEffect(function(){lsSet("ideal_templates",templates);templatesRef.current=templates;},[templates]);
+
+  function setSigs(upd){setSigsRaw(function(prev){var n=typeof upd==="function"?upd(prev):upd;lsSet("ideal_sigs",n);sigsRef.current=n;return n;});}
+
+  useEffect(function(){
+    if(syncTimer.current)clearTimeout(syncTimer.current);
+    syncTimer.current=setTimeout(function(){pushToCloud();},8000);
+    return function(){clearTimeout(syncTimer.current);};
+  },[tours,findings,sigs,templates,extraAreas,extraUnits]);
+
+  function getDB2(){
+    try{if(!window._fb)window._fb=firebase.initializeApp(FB);return firebase.firestore(window._fb);}
+    catch(err){try{return firebase.firestore();}catch{return null;}}
+  }
+
+  function pushToCloud(){
+    var db=getDB2();if(!db)return;
+    // Use refs to get LATEST values (avoids stale closure problem)
+    var data={
+      tours:toursRef.current,
+      findings:findingsRef.current,
+      sigs:sigsRef.current,
+      templates:templatesRef.current,
+      extraAreas:extraAreasRef.current,
+      extraUnits:extraUnitsRef.current,
+      updatedAt:new Date().toISOString()
+    };
+    db.collection("users").doc("shared").set(data)
+      .then(function(){setSyncSt("synced");setTimeout(function(){setSyncSt("idle");},2000);})
+      .catch(function(){setSyncSt("error");});
+  }
+
+  function pullFromCloud(){
+    var db=getDB2();if(!db){setSyncSt("error");return;}
+    setSyncSt("syncing");
+    db.collection("users").doc("shared").get().then(function(doc){
+      if(doc.exists){
+        var d=doc.data();
+        var cn=(d.findings||[]).length,ln=findings.length;
+        if(ln>cn){
+          var ok=window.confirm("בענן יש "+cn+" ממצאים, במכשיר יש "+ln+". משיכה תחליף את הנתונים. להמשיך?");
+          if(!ok){setSyncSt("idle");return;}
+        }
+        if(d.tours)setTours(d.tours);
+        if(d.findings)setFindings(d.findings);
+        if(d.sigs)setSigsRaw(d.sigs);
+        if(d.templates)setTemplates(d.templates);
+        if(d.extraAreas)setExtraAreas(d.extraAreas);
+        if(d.extraUnits)setExtraUnits(d.extraUnits);
+        setSyncSt("synced");setTimeout(function(){setSyncSt("idle");},3000);
+      }else{pushToCloud();}
+    }).catch(function(){setSyncSt("error");});
+  }
+
+  function startTour(){
+    if(!nt.name.trim())return;
+    var t={id:gid(),name:nt.name,inspector:nt.inspector,project:nt.project,contractor:nt.contractor,date:today(),time:nowt(),findings:[],status:"active"};
+    setTours(function(p){return p.concat([t]);});setActiveTour(t);setNt({name:"",inspector:"",project:"",contractor:""});setView("tour");
+  }
+  function endTour(){if(!activeTour)return;setTours(function(p){return p.map(function(t){return t.id===activeTour.id?Object.assign({},t,{status:"closed"}):t;});});setActiveTour(null);}
+  function resumeTour(t){setActiveTour(Object.assign({},t,{status:"active"}));setTours(function(p){return p.map(function(x){return x.id===t.id?Object.assign({},x,{status:"active"}):x;});});setView("tour");}
+  function delTourFn(id){setTours(function(p){return p.filter(function(t){return t.id!==id;});});setFindings(function(p){return p.filter(function(f){return f.tourId!==id;});});setSelReport(null);}
+
+  function addFinding(tourId,finding,done){
+    if(!finding.description.trim())return;
+    var tour=tours.find(function(t){return t.id===tourId;})||activeTour;
+    var nf=Object.assign({},finding,{id:gid(),tourId:tour?tour.id:null,tourName:tour?tour.name:"",date:today()});
+    setFindings(function(p){return p.concat([nf]);});
+    if(tour){
+      var u=Object.assign({},tour,{findings:tour.findings.concat([nf.id])});
+      setTours(function(p){return p.map(function(t){return t.id===tour.id?u:t;});});
+      if(activeTour&&activeTour.id===tour.id)setActiveTour(u);
+    }
+    done();
+  }
+  function delFinding(id){setFindings(function(p){return p.filter(function(f){return f.id!==id;});});setTours(function(p){return p.map(function(t){return Object.assign({},t,{findings:t.findings.filter(function(fid){return fid!==id;})});});});}
+  function editFinding(id,data){setFindings(function(p){return p.map(function(f){return f.id===id?Object.assign({},f,data):f;});});}
+  function addExtraArea(a){if(AREAS.indexOf(a)===-1&&extraAreas.indexOf(a)===-1)setExtraAreas(function(p){return p.concat([a]);});}
+  function addExtraUnit(u){if(ULOCS.indexOf(u)===-1&&extraUnits.indexOf(u)===-1)setExtraUnits(function(p){return p.concat([u]);});}
+
+  var od=findings.filter(function(f){return f.status!=="סגור"&&overdue(f.deadline);}).length;
+  var filtered=findings.filter(function(f){if(filterSt!=="הכל"&&f.status!==filterSt)return false;if(filterSev!=="הכל"&&f.severity!==filterSev)return false;return true;});
+  var stats={total:findings.length,open:findings.filter(function(f){return f.status==="פתוח";}).length,crit:findings.filter(function(f){return f.severity==="קריטי";}).length,tours:tours.length};
+  var actTours=tours.filter(function(t){return t.status==="active";});
+
+  // Nav
+  var navItems=[{id:"dashboard",l:"בקרה",ic:"📊"},{id:"tour",l:"סיור",ic:"👷"},{id:"findings",l:"ממצאים",ic:"📋"},{id:"report",l:"דוחות",ic:"📄"}];
+
+  // Shared form renderer
+  function renderForm(tourId,f,setF,onSave,onCancel){
+    return e(FindingForm,{finding:f,onChange:setF,onSave:onSave,onCancel:onCancel,
+      onTemplates:function(){setShowPicker(true);},extraAreas:extraAreas,onAddArea:addExtraArea,extraUnits:extraUnits,onAddUnit:addExtraUnit});
+  }
+
+  return e("div",{style:{fontFamily:"Heebo, Arial, sans-serif",direction:"rtl",minHeight:"100vh",background:"#e8f3fc",color:"#1e3a5f"}},
+    showPicker&&e(TmplPicker,{templates:templates,onSelect:function(t){setNewF(function(f){return Object.assign({},f,{description:t.description,severity:t.severity,area:t.area});});setShowForm(true);},onManage:function(){setShowMgr(true);},onClose:function(){setShowPicker(false);}}),
+    showMgr&&e(TmplMgr,{templates:templates,onUpdate:setTemplates,onClose:function(){setShowMgr(false);}}),
+    delTourC&&e(Confirm,{msg:'למחוק סיור '+delTourC.name+' וכל ממצאיו?',onOk:function(){delTourFn(delTourC.id);setDelTourC(null);},onCancel:function(){setDelTourC(null);}}),
+
+    // Top bar
+    e("div",{style:{background:"#fff",borderBottom:"2px solid #bcd4f0",padding:"0 13px",display:"flex",alignItems:"center",gap:"10px",height:"58px",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 10px rgba(21,101,192,.07)"}},
+      e("img",{src:"data:image/png;base64,"+LOGO,alt:"IDEAL",style:{height:"40px",objectFit:"contain"}}),
+      e("div",{style:{width:"1px",height:"30px",background:"#bcd4f0"}}),
+      activeTour&&e("div",{style:{background:"#e8f1fb",border:"1px solid #7fafd6",borderRadius:"20px",padding:"2px 10px",fontSize:"12px",color:"#1565c0",display:"flex",alignItems:"center",gap:"5px"}},
+        e("span",{className:"spin",style:{width:"7px",height:"7px",borderRadius:"50%",background:"#22c55e",display:"inline-block"}}),
+        activeTour.name
+      ),
+      od>0&&e("div",{style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:"20px",padding:"2px 10px",fontSize:"12px",color:"#dc2626"}},"⏰ "+od),
+      e("div",{style:{marginRight:"auto",display:"flex",gap:"2px"}},
+        navItems.map(function(v){return e("button",{key:v.id,onClick:function(){setView(v.id);},style:{background:view===v.id?"#1565c0":"transparent",color:view===v.id?"#fff":"#4a7aaa",border:"none",borderRadius:"8px",padding:"5px 10px",fontSize:"13px",fontWeight:view===v.id?"700":"400",cursor:"pointer",fontFamily:"inherit"}},v.l);})
+      )
+    ),
+
+    // Content
+    e("div",{style:{maxWidth:"720px",margin:"0 auto",padding:"13px 12px 100px"}},
+
+      // DASHBOARD
+      view==="dashboard"&&e("div",null,
+        e("div",{style:{fontSize:"21px",fontWeight:"900",marginBottom:"2px"}},"לוח בקרה"),
+        e("div",{style:{color:"#7fafd6",fontSize:"12px",marginBottom:"13px"}},new Date().toLocaleDateString("he-IL",{weekday:"long",year:"numeric",month:"long",day:"numeric"})),
+        // Sync bar
+        e("div",{style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"12px",padding:"11px 13px",marginBottom:"13px",display:"flex",alignItems:"center",gap:"10px"}},
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontWeight:"700",fontSize:"13px"}},"☁️ סנכרון ענן"),
+            e("div",{style:{fontSize:"11px",color:"#7fafd6"}},syncSt==="syncing"?"🔄 מסנכרן...":syncSt==="synced"?"✓ סונכרן":syncSt==="error"?"⚠️ שגיאה":"שומר אוטומטית | קבל = משוך ממכשיר אחר")
+          ),
+          e("button",{onClick:pullFromCloud,disabled:syncSt==="syncing",style:{...BS,padding:"8px 11px",fontSize:"12px"}},"⬇️ קבל"),
+          e("button",{onClick:pushToCloud,disabled:syncSt==="syncing",style:{...BP,padding:"8px 11px",fontSize:"12px"}},"⬆️ שלח")
+        ),
+        e(OvAlert,{findings:findings}),
+        // Stats
+        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"15px"}},
+          [{l:'סה"כ',v:stats.total,ic:"📋",c:"#1565c0"},{l:"פתוחים",v:stats.open,ic:"🔓",c:"#f97316"},{l:"קריטיים",v:stats.crit,ic:"🚨",c:"#ef4444"},{l:"סיורים",v:stats.tours,ic:"👷",c:"#059669"}].map(function(s){
+            return e("div",{key:s.l,style:{background:"#fff",border:"1px solid "+s.c+"33",borderRadius:"13px",padding:"14px",display:"flex",alignItems:"center",gap:"11px",boxShadow:"0 2px 8px rgba(21,101,192,.04)"}},
+              e("div",{style:{fontSize:"28px"}},s.ic),
+              e("div",null,e("div",{style:{fontSize:"26px",fontWeight:"900",color:s.c,lineHeight:"1"}},s.v),e("div",{style:{fontSize:"11px",color:"#7fafd6",marginTop:"2px"}},s.l))
+            );
+          })
+        ),
+        // Active tours
+        actTours.length>0&&e("div",{style:{marginBottom:"15px"}},
+          e("div",{style:{fontSize:"14px",fontWeight:"700",marginBottom:"9px",color:"#059669"}},"🟢 סיורים פעילים"),
+          actTours.map(function(t){
+            return e("div",{key:t.id,style:{background:"#f0fff4",border:"2px solid #6ee7b7",borderRadius:"12px",padding:"13px",marginBottom:"8px"}},
+              e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+                e("div",null,
+                  e("div",{style:{fontWeight:"900",fontSize:"16px"}},t.name),
+                  e("div",{style:{fontSize:"13px",color:"#4a7aaa"}},t.project),
+                  e("div",{style:{fontSize:"12px",color:"#7fafd6",marginTop:"2px"}},t.inspector+(t.contractor?" | "+t.contractor:"")+" • "+t.date+" "+t.time)
+                ),
+                e("div",{style:{background:"#dcfce7",border:"1px solid #6ee7b7",borderRadius:"20px",padding:"3px 10px",fontSize:"12px",color:"#059669"}},findings.filter(function(f){return f.tourId===t.id;}).length+" ממצאים")
+              ),
+              e("button",{onClick:function(){resumeTour(t);},style:{...BP,width:"100%",marginTop:"11px",fontSize:"14px",padding:"11px",background:"#059669"}},"▶ המשך סיור")
+            );
+          })
+        ),
+        // Recent findings
+        e("div",{style:{fontSize:"14px",fontWeight:"700",marginBottom:"9px"}},"ממצאים אחרונים"),
+        findings.slice(-3).reverse().map(function(f){return e(FindingCard,{key:f.id,f:f,onStatus:function(id,s){editFinding(id,{status:s});},onDelete:delFinding,onEdit:editFinding});}),
+        findings.length===0&&e("div",{style:{textAlign:"center",color:"#7fafd6",padding:"28px 0",fontSize:"14px"}},"אין ממצאים עדיין.",e("br"),"התחל סיור חדש."),
+        // New tour form
+        e("div",{style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"13px",padding:"15px",marginTop:"15px",boxShadow:"0 2px 8px rgba(21,101,192,.04)"}},
+          e("div",{style:{fontWeight:"700",marginBottom:"11px",fontSize:"15px"}},"פתח סיור חדש"),
+          e("input",{value:nt.project,onChange:function(ev){setNt(function(n){return Object.assign({},n,{project:ev.target.value});});},placeholder:"שם הפרויקט",style:IS}),
+          e("input",{value:nt.name,onChange:function(ev){setNt(function(n){return Object.assign({},n,{name:ev.target.value});});},placeholder:"שם / מספר הסיור",style:{...IS,marginTop:"9px"}}),
+          e("input",{value:nt.inspector,onChange:function(ev){setNt(function(n){return Object.assign({},n,{inspector:ev.target.value});});},placeholder:"שם המפקח",style:{...IS,marginTop:"9px"}}),
+          e("input",{value:nt.contractor,onChange:function(ev){setNt(function(n){return Object.assign({},n,{contractor:ev.target.value});});},placeholder:"שם הקבלן",style:{...IS,marginTop:"9px"}}),
+          e("button",{onClick:startTour,style:{...BP,width:"100%",marginTop:"11px",fontSize:"15px",padding:"13px"}},"▶ התחל סיור")
+        )
+      ),
+
+      // TOUR
+      view==="tour"&&e("div",null,
+        !activeTour
+          ?e("div",{style:{textAlign:"center",padding:"50px 0",color:"#7fafd6"}},
+              e("div",{style:{fontSize:"46px",marginBottom:"11px"}},"👷"),
+              e("div",{style:{fontWeight:"700",marginBottom:"11px",fontSize:"16px"}},"אין סיור פעיל"),
+              e("button",{onClick:function(){setView("dashboard");},style:{...BS,fontSize:"15px",padding:"12px 22px"}},"פתח סיור חדש"),
+              actTours.length>0&&e("div",{style:{marginTop:"22px"}},
+                e("div",{style:{fontSize:"14px",fontWeight:"700",color:"#059669",marginBottom:"9px"}},"סיורים פעילים:"),
+                actTours.map(function(t){return e("button",{key:t.id,onClick:function(){resumeTour(t);},style:{...BP,width:"100%",marginBottom:"8px",background:"#059669",fontSize:"14px"}},"▶ המשך: "+t.name);})
+              )
+            )
+          :e("div",null,
+              e("div",{style:{background:"#fff",border:"1px solid #7fafd6",borderRadius:"13px",padding:"15px",marginBottom:"13px",boxShadow:"0 2px 8px rgba(21,101,192,.07)"}},
+                e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+                  e("div",null,
+                    e("div",{style:{fontWeight:"900",fontSize:"17px"}},activeTour.name),
+                    e("div",{style:{color:"#4a7aaa",fontSize:"13px"}},activeTour.project),
+                    e("div",{style:{color:"#7fafd6",fontSize:"12px",marginTop:"3px"}},activeTour.inspector+(activeTour.contractor?" | קבלן: "+activeTour.contractor:"")+" • "+activeTour.date+" "+activeTour.time)
+                  ),
+                  e("div",{style:{background:"#e8f1fb",border:"1px solid #7fafd6",borderRadius:"20px",padding:"3px 11px",fontSize:"12px",color:"#1565c0"}},activeTour.findings.length+" ממצאים")
+                ),
+                e(SigSection,{tourId:activeTour.id,sigs:sigs,setSigs:setSigs}),
+                e("button",{onClick:endTour,style:{...BS,marginTop:"11px",width:"100%",fontSize:"14px"}},"✓ סיים סיור")
+              ),
+              findings.filter(function(f){return f.tourId===activeTour.id;}).map(function(f){return e(FindingCard,{key:f.id,f:f,onStatus:function(id,s){editFinding(id,{status:s});},onDelete:delFinding,onEdit:editFinding});}),
+              !showForm
+                ?e("div",{style:{display:"flex",gap:"9px",marginTop:"9px"}},
+                    e("button",{onClick:function(){setShowForm(true);},style:{...BP,flex:2,padding:"14px",fontSize:"15px"}},"+ הוסף ממצא"),
+                    e("button",{onClick:function(){setShowPicker(true);},style:{...BS,flex:1,padding:"14px",fontSize:"13px"}},"⚡ תבנית")
+                  )
+                :renderForm(activeTour.id,newF,setNewF,function(){addFinding(activeTour.id,newF,function(){setNewF(emptyF());setShowForm(false);});},function(){setShowForm(false);})
+            )
+      ),
+
+      // FINDINGS
+      view==="findings"&&e("div",null,
+        e("div",{style:{fontSize:"21px",fontWeight:"900",marginBottom:"13px"}},"כל הממצאים"),
+        e(OvAlert,{findings:findings}),
+        e("div",{style:{marginBottom:"13px"}},
+          e("div",{style:{fontSize:"12px",color:"#7fafd6",marginBottom:"5px"}},"סטטוס"),
+          e("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"9px"}},
+            ["הכל"].concat(STATS).map(function(s){return e("button",{key:s,onClick:function(){setFilterSt(s);},style:{background:filterSt===s?"#1565c0":"#fff",color:filterSt===s?"#fff":"#4a7aaa",border:"1px solid "+(filterSt===s?"#1565c0":"#bcd4f0"),borderRadius:"8px",padding:"6px 13px",fontSize:"13px",cursor:"pointer",fontFamily:"inherit"}},s);})
+          ),
+          e("div",{style:{fontSize:"12px",color:"#7fafd6",marginBottom:"5px"}},"חומרה"),
+          e("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap"}},
+            ["הכל"].concat(SEV).map(function(s){return e("button",{key:s,onClick:function(){setFilterSev(s);},style:{background:filterSev===s?"#1565c0":"#fff",color:filterSev===s?"#fff":"#4a7aaa",border:"1px solid "+(filterSev===s?"#1565c0":"#bcd4f0"),borderRadius:"8px",padding:"6px 13px",fontSize:"13px",cursor:"pointer",fontFamily:"inherit"}},s);})
+          )
+        ),
+        filtered.length===0?e("div",{style:{textAlign:"center",color:"#7fafd6",padding:"38px 0"}},"לא נמצאו ממצאים"):filtered.map(function(f){return e(FindingCard,{key:f.id,f:f,onStatus:function(id,s){editFinding(id,{status:s});},onDelete:delFinding,onEdit:editFinding,showTour:true});})
+      ),
+
+      // REPORTS
+      view==="report"&&e("div",null,
+        e("div",{style:{fontSize:"21px",fontWeight:"900",marginBottom:"13px"}},"דוחות סיור"),
+        tours.length===0?e("div",{style:{textAlign:"center",color:"#7fafd6",padding:"38px 0"}},"אין סיורים עדיין"):
+        tours.map(function(tour){
+          var tf=findings.filter(function(f){return f.tourId===tour.id;});
+          var isExp=selReport===tour.id;
+          var hasSigs=["inspector","contractor","resident"].some(function(k){return !!sigs[tour.id+"_"+k];});
+          var isAdding=repAddId===tour.id;
+          return e("div",{key:tour.id,style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"13px",marginBottom:"11px",overflow:"hidden",boxShadow:"0 2px 8px rgba(21,101,192,.04)"}},
+            e("div",{style:{padding:"15px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              e("div",{onClick:function(){setSelReport(isExp?null:tour.id);},style:{flex:1,cursor:"pointer"}},
+                e("div",{style:{fontWeight:"700",fontSize:"15px"}},tour.name),
+                e("div",{style:{fontSize:"13px",color:"#7fafd6"}},tour.project+(tour.contractor?" | "+tour.contractor:"")+" • "+tour.inspector+" • "+tour.date)
+              ),
+              e("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
+                hasSigs&&e("span",{style:{fontSize:"13px",color:"#059669"}},"✍️"),
+                tour.status==="active"&&e("span",{style:{background:"#dcfce7",color:"#059669",border:"1px solid #6ee7b7",borderRadius:"20px",padding:"2px 8px",fontSize:"11px"}},"פעיל"),
+                e("div",{style:{background:"#ede9fe",color:"#7c3aed",borderRadius:"20px",padding:"3px 11px",fontSize:"13px"}},tf.length+" ממצאים"),
+                !isExp&&e("button",{onClick:function(){setDelTourC(tour);},style:{...BD,padding:"4px 8px",fontSize:"12px"}},"🗑"),
+                e("span",{onClick:function(){setSelReport(isExp?null:tour.id);},style:{color:"#7fafd6",fontSize:"18px",cursor:"pointer"}},isExp?"▲":"▼")
+              )
+            ),
+            isExp&&e("div",{style:{borderTop:"1px solid #e0edf8",padding:"13px"}},
+              e("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"11px"}},
+                SEV.map(function(s){var c=tf.filter(function(f){return f.severity===s;}).length;return c?e("div",{key:s,style:{background:SEVC[s]+"22",border:"1px solid "+SEVC[s]+"55",borderRadius:"20px",padding:"3px 10px",fontSize:"12px",color:SEVC[s]}},s+": "+c):null;}),
+                e("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:"20px",padding:"3px 10px",fontSize:"12px",color:"#059669"}},"סגורים: "+tf.filter(function(f){return f.status==="סגור";}).length)
+              ),
+              e("div",{style:{display:"flex",gap:"11px",marginBottom:"11px",flexWrap:"wrap"}},
+                ["inspector","contractor","resident"].map(function(k){var s=sigs[tour.id+"_"+k];var l=k==="inspector"?"מפקח":k==="contractor"?"קבלן":"דייר";return s?e("div",{key:k,style:{textAlign:"center"}},e("img",{src:s,style:{height:"38px",border:"1px solid #bcd4f0",borderRadius:"6px",background:"#f8faff",display:"block"}}),e("div",{style:{fontSize:"10px",color:"#059669",marginTop:"2px"}},"✓ "+l)):null;})
+              ),
+              tf.length===0?e("div",{style:{color:"#7fafd6",fontSize:"14px",marginBottom:"11px"}},"אין ממצאים בסיור זה"):tf.map(function(f){return e(FindingCard,{key:f.id,f:f,onStatus:function(id,s){editFinding(id,{status:s});},onDelete:delFinding,onEdit:editFinding});}),
+              !isAdding
+                ?e("button",{onClick:function(){setRepAddId(tour.id);setRepF(emptyF());},style:{...BS,width:"100%",marginBottom:"11px",fontSize:"14px"}},"+ הוסף ממצא לסיור")
+                :renderForm(tour.id,repF,setRepF,function(){addFinding(tour.id,repF,function(){setRepF(emptyF());setRepAddId(null);});},function(){setRepAddId(null);}),
+              e("div",{style:{display:"flex",gap:"8px",marginTop:"8px"}},
+                e("button",{onClick:function(){printReport(tour,findings,sigs);},style:{...BP,flex:2,fontSize:"14px",padding:"13px"}},"🖨️ הדפס / PDF"),
+                e("button",{onClick:function(){shareReport(tour,findings,sigs);},style:{...BS,flex:1,fontSize:"14px",padding:"13px"}},"📤 שתף"),
+                e("button",{onClick:function(){setDelTourC(tour);},style:{...BD,padding:"13px",fontSize:"14px"}},"🗑")
+              )
+            )
+          );
+        })
+      )
+    ),
+
+    // Bottom nav
+    e("div",{style:{position:"fixed",bottom:0,right:0,left:0,background:"#fff",borderTop:"2px solid #bcd4f0",display:"flex",zIndex:100,boxShadow:"0 -2px 10px rgba(21,101,192,.07)"}},
+      navItems.map(function(v){return e("button",{key:v.id,onClick:function(){setView(v.id);},style:{flex:1,background:"transparent",border:"none",padding:"9px 0 13px",cursor:"pointer",fontFamily:"inherit",color:view===v.id?"#1565c0":"#9ca3af",fontWeight:view===v.id?"700":"400",borderTop:view===v.id?"3px solid #1565c0":"3px solid transparent"}},
+        e("div",{style:{fontSize:"21px"}},v.ic),
+        e("div",{style:{fontSize:"11px",marginTop:"2px"}},v.l)
+      );})
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App,null));
+</script>
+</body>
+</html>
