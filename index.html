@@ -519,15 +519,29 @@ function App(){
   }
 
   function pushToCloud(){
-    var db=getDB2();if(!db)return;
-    // Use refs to get LATEST values (avoids stale closure problem)
+    var db=getDB2();if(!db){setSyncSt("error");return;}
+    // Always read from localStorage - most reliable source of truth
+    var safeTours=lsGet("ideal_tours",[]);
+    var safeFindings=lsGet("ideal_findings",[]);
+    var safeSigs=lsGet("ideal_sigs",{});
+    var safeTemplates=lsGet("ideal_templates",[]);
+    var safeAreas=lsGet("ideal_areas",[]);
+    var safeUnits=lsGet("ideal_units",[]);
+    // Safety check: never push empty data if we have data in memory
+    if(safeFindings.length===0 && findingsRef.current.length>0){
+      safeFindings=findingsRef.current;
+    }
+    if(safeTours.length===0 && toursRef.current.length>0){
+      safeTours=toursRef.current;
+    }
+    setSyncSt("syncing");
     var data={
-      tours:toursRef.current,
-      findings:findingsRef.current,
-      sigs:sigsRef.current,
-      templates:templatesRef.current,
-      extraAreas:extraAreasRef.current,
-      extraUnits:extraUnitsRef.current,
+      tours:safeTours,
+      findings:safeFindings,
+      sigs:safeSigs,
+      templates:safeTemplates,
+      extraAreas:safeAreas,
+      extraUnits:safeUnits,
       updatedAt:new Date().toISOString()
     };
     db.collection("users").doc("shared").set(data)
@@ -541,7 +555,7 @@ function App(){
     db.collection("users").doc("shared").get().then(function(doc){
       if(doc.exists){
         var d=doc.data();
-        var cn=(d.findings||[]).length,ln=findingsRef.current.length;
+        var cn=(d.findings||[]).length,ln=lsGet("ideal_findings",[]).length;
         if(ln>cn){
           var ok=window.confirm("בענן יש "+cn+" ממצאים, במכשיר יש "+ln+". משיכה תחליף את הנתונים. להמשיך?");
           if(!ok){setSyncSt("idle");return;}
