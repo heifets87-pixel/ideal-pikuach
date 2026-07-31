@@ -116,11 +116,16 @@ function buildReport(tour,findings,sigs){
 }
 
 function printReport(tour,findings,sigs){
+  // Force-save to localStorage before opening window (prevents data loss on page reload)
+  try{localStorage.setItem("ideal_findings",JSON.stringify(findings));}catch(e){}
+  try{localStorage.setItem("ideal_tours",JSON.stringify(tour));}catch(e){}
   var w=window.open("","_blank");
   if(w){w.document.write(buildReport(tour,findings,sigs));w.document.close();setTimeout(function(){w.print();},800);}
 }
 
 function shareReport(tour,findings,sigs){
+  // Force-save to localStorage before opening window
+  try{localStorage.setItem("ideal_findings",JSON.stringify(findings));}catch(e){}
   var html=buildReport(tour,findings,sigs);
   var w=window.open("","_blank");
   if(!w){alert("אפשר גישה לחלונות קופצים");return;}
@@ -536,7 +541,7 @@ function App(){
     db.collection("users").doc("shared").get().then(function(doc){
       if(doc.exists){
         var d=doc.data();
-        var cn=(d.findings||[]).length,ln=findings.length;
+        var cn=(d.findings||[]).length,ln=findingsRef.current.length;
         if(ln>cn){
           var ok=window.confirm("בענן יש "+cn+" ממצאים, במכשיר יש "+ln+". משיכה תחליף את הנתונים. להמשיך?");
           if(!ok){setSyncSt("idle");return;}
@@ -559,11 +564,17 @@ function App(){
   }
   function endTour(){if(!activeTour)return;setTours(function(p){return p.map(function(t){return t.id===activeTour.id?Object.assign({},t,{status:"closed"}):t;});});setActiveTour(null);}
   function resumeTour(t){setActiveTour(Object.assign({},t,{status:"active"}));setTours(function(p){return p.map(function(x){return x.id===t.id?Object.assign({},x,{status:"active"}):x;});});setView("tour");}
-  function delTourFn(id){setTours(function(p){return p.filter(function(t){return t.id!==id;});});setFindings(function(p){return p.filter(function(f){return f.tourId!==id;});});setSelReport(null);}
+  function delTourFn(id){
+    var newT=toursRef.current.filter(function(t){return t.id!==id;});
+    var newF=findingsRef.current.filter(function(f){return f.tourId!==id;});
+    setTours(newT);toursRef.current=newT;lsSet("ideal_tours",newT);
+    setFindings(newF);findingsRef.current=newF;lsSet("ideal_findings",newF);
+    setSelReport(null);
+  }
 
   function addFinding(tourId,finding,done){
     if(!finding.description.trim())return;
-    var tour=tours.find(function(t){return t.id===tourId;})||activeTour;
+    var tour=toursRef.current.find(function(t){return t.id===tourId;})||activeTour;
     var nf=Object.assign({},finding,{id:gid(),tourId:tour?tour.id:null,tourName:tour?tour.name:"",date:today()});
     var newFindings=findingsRef.current.concat([nf]);
     setFindings(newFindings);
@@ -579,8 +590,18 @@ function App(){
     }
     done();
   }
-  function delFinding(id){setFindings(function(p){return p.filter(function(f){return f.id!==id;});});setTours(function(p){return p.map(function(t){return Object.assign({},t,{findings:t.findings.filter(function(fid){return fid!==id;})});});});}
-  function editFinding(id,data){setFindings(function(p){return p.map(function(f){return f.id===id?Object.assign({},f,data):f;});});}
+  function delFinding(id){
+    var newF=findingsRef.current.filter(function(f){return f.id!==id;});
+    var newT=toursRef.current.map(function(t){return Object.assign({},t,{findings:t.findings.filter(function(fid){return fid!==id;})});});
+    setFindings(newF);findingsRef.current=newF;lsSet("ideal_findings",newF);
+    setTours(newT);toursRef.current=newT;lsSet("ideal_tours",newT);
+  }
+  function editFinding(id,data){
+    var updated=findingsRef.current.map(function(f){return f.id===id?Object.assign({},f,data):f;});
+    setFindings(updated);
+    findingsRef.current=updated;
+    lsSet("ideal_findings",updated);
+  }
   function addExtraArea(a){if(AREAS.indexOf(a)===-1&&extraAreas.indexOf(a)===-1)setExtraAreas(function(p){return p.concat([a]);});}
   function addExtraUnit(u){if(ULOCS.indexOf(u)===-1&&extraUnits.indexOf(u)===-1)setExtraUnits(function(p){return p.concat([u]);});}
 
