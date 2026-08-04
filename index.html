@@ -712,6 +712,17 @@ function App(){
             e("div",{style:{fontWeight:"700",fontSize:"13px"}},"☁️ סנכרון ענן"),
             e("div",{style:{fontSize:"11px",color:"#7fafd6"}},syncSt==="syncing"?"🔄 מסנכרן...":syncSt==="synced"?"✓ סונכרן":syncSt.indexOf("error")===0?"⚠️ שגיאה: "+syncSt.replace("error_",""):"שמור בכפתור ⬆️ | קבל ⬇️ ממכשיר אחר")
           ),
+          e("button",{onClick:function(){
+            // Firebase connection test
+            try{
+              var db=getDB2();
+              if(!db){alert("Firebase: getDB2 returned null");return;}
+              alert("Firebase DB object created OK - trying write...");
+              db.collection("test").doc("ping").set({t:new Date().toISOString()})
+                .then(function(){alert("✅ Firebase write works!");})
+                .catch(function(err){alert("❌ Firebase error:\n"+err.code+"\n"+err.message);});
+            }catch(e){alert("Exception: "+e.message);}
+          },style:{...BS,padding:"8px 11px",fontSize:"11px"}},"🔧 בדוק"),
           e("button",{onClick:pullFromCloud,disabled:syncSt==="syncing",style:{...BS,padding:"8px 11px",fontSize:"12px"}},"⬇️ קבל"),
           e("button",{onClick:pushToCloud,disabled:syncSt==="syncing",style:{...BP,padding:"8px 11px",fontSize:"12px"}},"⬆️ שלח")
         ),
