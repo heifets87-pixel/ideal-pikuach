@@ -116,16 +116,11 @@ function buildReport(tour,findings,sigs){
 }
 
 function printReport(tour,findings,sigs){
-  // Force-save to localStorage before opening window (prevents data loss on page reload)
-  try{localStorage.setItem("ideal_findings",JSON.stringify(findings));}catch(e){}
-  try{localStorage.setItem("ideal_tours",JSON.stringify(tour));}catch(e){}
   var w=window.open("","_blank");
   if(w){w.document.write(buildReport(tour,findings,sigs));w.document.close();setTimeout(function(){w.print();},800);}
 }
 
 function shareReport(tour,findings,sigs){
-  // Force-save to localStorage before opening window
-  try{localStorage.setItem("ideal_findings",JSON.stringify(findings));}catch(e){}
   var html=buildReport(tour,findings,sigs);
   var w=window.open("","_blank");
   if(!w){alert("אפשר גישה לחלונות קופצים");return;}
