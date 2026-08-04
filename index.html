@@ -61,7 +61,22 @@ const gid = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
 const today = () => new Date().toLocaleDateString("he-IL");
 const nowt = () => new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
 const overdue = d => { if(!d)return false; const dt=new Date(d),n=new Date(); return dt<n&&dt.toDateString()!==n.toDateString(); };
-const lsGet = (k,def) => { try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch{return def;} };
+const lsGet = (k,def) => {
+  try{
+    const v=localStorage.getItem(k);
+    if(!v)return def;
+    const parsed=JSON.parse(v);
+    // Safety: if we expect an array but got something else, return default
+    if(Array.isArray(def) && !Array.isArray(parsed)){
+      console.warn('lsGet: expected array for key',k,'but got',typeof parsed,'- using default');
+      return def;
+    }
+    return parsed;
+  }catch(e){
+    console.warn('lsGet error for key',k,e);
+    return def;
+  }
+};
 const lsSet = (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch{} };
 const emptyF = () => ({description:"",severity:"בינוני",area:"כללי",floor:"",unitLoc:"",responsible:"",deadline:"",status:"פתוח",photos:[]});
 
@@ -471,8 +486,16 @@ function OvAlert(props){
 // ── Main App ───────────────────────────────────────────────
 function App(){
   var [view,setView]=useState("dashboard");
-  var [tours,setTours]=useState(function(){return lsGet("ideal_tours",[]);});
-  var [findings,setFindings]=useState(function(){return lsGet("ideal_findings",[]);});
+  var [tours,setTours]=useState(function(){
+    var t=lsGet("ideal_tours",[]);
+    console.log("[IDEAL] Init tours from LS:",t.length,"items");
+    return t;
+  });
+  var [findings,setFindings]=useState(function(){
+    var f=lsGet("ideal_findings",[]);
+    console.log("[IDEAL] Init findings from LS:",f.length,"items");
+    return f;
+  });
   var [sigs,setSigsRaw]=useState(function(){return lsGet("ideal_sigs",{});});
   var [templates,setTemplates]=useState(function(){return lsGet("ideal_templates",TMPLS);});
   var [extraAreas,setExtraAreas]=useState(function(){return lsGet("ideal_areas",[]);});
