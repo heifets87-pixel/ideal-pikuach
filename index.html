@@ -532,7 +532,18 @@ function App(){
   // Auto-push removed - manual only for safety
 
   function getDB2(){
-    try{if(!window._fb)window._fb=firebase.initializeApp(FB);return firebase.firestore(window._fb);}
+    try{
+      if(!window._fb) window._fb=firebase.initializeApp(FB);
+      var db=firebase.firestore(window._fb);
+      if(!window._fbSettings){
+        window._fbSettings=true;
+        try{
+          // Use long polling to avoid QUIC protocol issues
+          db.settings({experimentalForceLongPolling:true,merge:true});
+        }catch(e){}
+      }
+      return db;
+    }
     catch(err){try{return firebase.firestore();}catch{return null;}}
   }
 
@@ -564,7 +575,10 @@ function App(){
     };
     db.collection("users").doc("shared").set(data)
       .then(function(){setSyncSt("synced");setTimeout(function(){setSyncSt("idle");},2000);})
-      .catch(function(){setSyncSt("error");});
+      .catch(function(err){
+        console.error("[IDEAL] Firebase push error:",err.code, err.message);
+        setSyncSt("error_"+( err.code||"unknown"));
+      });
   }
 
   function pullFromCloud(){
@@ -586,7 +600,10 @@ function App(){
         if(d.extraUnits){setExtraUnits(d.extraUnits);extraUnitsRef.current=d.extraUnits;lsSet("ideal_units",d.extraUnits);}
         setSyncSt("synced");setTimeout(function(){setSyncSt("idle");},3000);
       }else{pushToCloud();}
-    }).catch(function(){setSyncSt("error");});
+    }).catch(function(err){
+      console.error("[IDEAL] Firebase pull error:",err.code, err.message);
+      setSyncSt("error");
+    });
   }
 
   function startTour(){
@@ -693,7 +710,7 @@ function App(){
         e("div",{style:{background:"#fff",border:"1px solid #bcd4f0",borderRadius:"12px",padding:"11px 13px",marginBottom:"13px",display:"flex",alignItems:"center",gap:"10px"}},
           e("div",{style:{flex:1}},
             e("div",{style:{fontWeight:"700",fontSize:"13px"}},"☁️ סנכרון ענן"),
-            e("div",{style:{fontSize:"11px",color:"#7fafd6"}},syncSt==="syncing"?"🔄 מסנכרן...":syncSt==="synced"?"✓ סונכרן":syncSt==="error"?"⚠️ שגיאה":"שמור בכפתור ⬆️ לענן | קבל ⬇️ ממכשיר אחר")
+            e("div",{style:{fontSize:"11px",color:"#7fafd6"}},syncSt==="syncing"?"🔄 מסנכרן...":syncSt==="synced"?"✓ סונכרן":syncSt.indexOf("error")===0?"⚠️ שגיאה: "+syncSt.replace("error_",""):"שמור בכפתור ⬆️ | קבל ⬇️ ממכשיר אחר")
           ),
           e("button",{onClick:pullFromCloud,disabled:syncSt==="syncing",style:{...BS,padding:"8px 11px",fontSize:"12px"}},"⬇️ קבל"),
           e("button",{onClick:pushToCloud,disabled:syncSt==="syncing",style:{...BP,padding:"8px 11px",fontSize:"12px"}},"⬆️ שלח")
