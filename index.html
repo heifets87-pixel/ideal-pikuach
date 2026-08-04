@@ -560,12 +560,12 @@ function App(){
           var ok=window.confirm("בענן יש "+cn+" ממצאים, במכשיר יש "+ln+". משיכה תחליף את הנתונים. להמשיך?");
           if(!ok){setSyncSt("idle");return;}
         }
-        if(d.tours)setTours(d.tours);
-        if(d.findings)setFindings(d.findings);
-        if(d.sigs)setSigsRaw(d.sigs);
-        if(d.templates)setTemplates(d.templates);
-        if(d.extraAreas)setExtraAreas(d.extraAreas);
-        if(d.extraUnits)setExtraUnits(d.extraUnits);
+        if(d.tours){setTours(d.tours);toursRef.current=d.tours;lsSet("ideal_tours",d.tours);}
+        if(d.findings){setFindings(d.findings);findingsRef.current=d.findings;lsSet("ideal_findings",d.findings);}
+        if(d.sigs){setSigsRaw(d.sigs);sigsRef.current=d.sigs;lsSet("ideal_sigs",d.sigs);}
+        if(d.templates){setTemplates(d.templates);templatesRef.current=d.templates;lsSet("ideal_templates",d.templates);}
+        if(d.extraAreas){setExtraAreas(d.extraAreas);extraAreasRef.current=d.extraAreas;lsSet("ideal_areas",d.extraAreas);}
+        if(d.extraUnits){setExtraUnits(d.extraUnits);extraUnitsRef.current=d.extraUnits;lsSet("ideal_units",d.extraUnits);}
         setSyncSt("synced");setTimeout(function(){setSyncSt("idle");},3000);
       }else{pushToCloud();}
     }).catch(function(){setSyncSt("error");});
@@ -574,10 +574,22 @@ function App(){
   function startTour(){
     if(!nt.name.trim())return;
     var t={id:gid(),name:nt.name,inspector:nt.inspector,project:nt.project,contractor:nt.contractor,date:today(),time:nowt(),findings:[],status:"active"};
-    setTours(function(p){return p.concat([t]);});setActiveTour(t);setNt({name:"",inspector:"",project:"",contractor:""});setView("tour");
+    var newT=toursRef.current.concat([t]);
+    setTours(newT);toursRef.current=newT;lsSet("ideal_tours",newT);
+    setActiveTour(t);setNt({name:"",inspector:"",project:"",contractor:""});setView("tour");
   }
-  function endTour(){if(!activeTour)return;setTours(function(p){return p.map(function(t){return t.id===activeTour.id?Object.assign({},t,{status:"closed"}):t;});});setActiveTour(null);}
-  function resumeTour(t){setActiveTour(Object.assign({},t,{status:"active"}));setTours(function(p){return p.map(function(x){return x.id===t.id?Object.assign({},x,{status:"active"}):x;});});setView("tour");}
+  function endTour(){
+    if(!activeTour)return;
+    var newT=toursRef.current.map(function(t){return t.id===activeTour.id?Object.assign({},t,{status:"closed"}):t;});
+    setTours(newT);toursRef.current=newT;lsSet("ideal_tours",newT);
+    setActiveTour(null);
+  }
+  function resumeTour(t){
+    var newT=toursRef.current.map(function(x){return x.id===t.id?Object.assign({},x,{status:"active"}):x;});
+    setActiveTour(Object.assign({},t,{status:"active"}));
+    setTours(newT);toursRef.current=newT;lsSet("ideal_tours",newT);
+    setView("tour");
+  }
   function delTourFn(id){
     var newT=toursRef.current.filter(function(t){return t.id!==id;});
     var newF=findingsRef.current.filter(function(f){return f.tourId!==id;});
